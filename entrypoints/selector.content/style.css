@@ -1,0 +1,148 @@
+dom-selector,
+dom-selector * {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+dom-selector {
+    z-index: 999999999999999999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    background: #1e90ff77;
+    border-style: solid;
+    border-color: #ff8c0099;
+    --bt: 1px;
+    --br: 1px;
+    --bb: 1px;
+    --bl: 1px;
+    --mt: 0px;
+    --mr: 0px;
+    --mb: 0px;
+    --ml: 0px;
+    --pt: 0px;
+    --pr: 0px;
+    --pb: 0px;
+    --pl: 0px;
+}
+dom-selector:not(.surfing) {
+    display: none;
+}
+dom-selector {
+    border-width: var(--bt) var(--br) var(--bb) var(--bl);
+}
+dom-selector::before {
+    box-sizing: content-box;
+    content: " ";
+    position: absolute;
+    top: calc(0px - var(--mt) - var(--bt));
+    right: calc(0px - var(--mr) - var(--br));
+    bottom: calc(0px - var(--mb) - var(--bb));
+    left: calc(0px - var(--ml) - var(--bl));
+    border-width: var(--mt) var(--mr) var(--mb) var(--ml);
+}
+dom-selector::after {
+    box-sizing: content-box;
+    content: " ";
+    inset: 0;
+    position: absolute;
+    border: 0 solid #20c02077;
+    border-width: var(--pt) var(--pr) var(--pb) var(--pl);
+}
+dom-selector-data {
+    z-index: 1;
+    /*display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    margin: 6px;
+    overflow: hidden;*/
+    padding: 8px 8px 8px 8px;
+    position: absolute;
+    inset: 0 auto auto 0;
+    box-shadow: 2px 2px 4px 2px #0002, 0 0 0 1px #0001;
+    background: #fff;
+    border-radius: 6px;
+    min-width: 250px;
+
+}
+dom-selector:not(.selected) {
+    user-select: none;
+}
+dom-selector:not(.selected) dom-selector-closer {
+    display: none;
+}
+dom-selector-info {
+    color: #727888;
+    font-size: 14px;
+    font-weight: 500;
+    padding-right: 12px;
+    flex: 1;
+    max-width: 300px;
+}
+dom-selector-info span {
+    display: inline-block;
+}
+dom-selector-info span[node] {
+    color: purple;
+}
+dom-selector-info span[class] {
+    color: #00f;
+}
+dom-selector-info span[id] {
+    color: #ff8c00;
+}
+dom-selector-info span[display] {
+    color: brown;
+    padding-left: 10px;
+}
+dom-selector-info > div {
+    display: block;
+    margin: 5px auto;
+    font-size: 12px;
+}
+dom-selector-info div[dimension]:not(:last-child) {
+    border-bottom: 1px solid #0002;
+    padding-bottom: 5px;
+}
+dom-selector-info span[padding] {
+    color: green;
+    font-size: 12px;
+}
+dom-selector-info span[margin] {
+    color: orange;
+    font-size: 12px;
+}
+dom-selector-info div[border] {
+    color: #1e90ff;
+}
+dom-selector-info div[styling] {
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+}
+dom-selector-info div[styling] > span {
+    min-width: 14px;
+    min-height: 14px;
+    border: 1px solid #0005;
+}
+dom-selector-data.setbelow {
+    top: 100%;
+}
+dom-selector-data.fromright {
+    right: 0;
+    left: auto;
+}
+dom-selector-data.outside {
+    translate: 0 calc(-100% - 15px);
+}
+dom-selector-data.setbelow {
+    translate: 5px;
+}
+dom-selector-data.scrollable {
+    position: fixed;
+    top: 0;
+    left: inherit;
+    right: inherit;
+}
