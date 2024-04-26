@@ -1,13 +1,17 @@
 import {useEffect, useRef, useState} from 'react';
 import './App.module.css';
 import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
+import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
 
 export default () => {
     const [isSurfing, _setIsSurfing] = useState(false);
     const isSurfingRef = useRef(isSurfing);
+
+    const [isConfirmed, setIsConfirmed] = useState(false);
 
     function setIsSurfing(isSurfing) {
         isSurfingRef.current = isSurfing;
@@ -84,6 +88,7 @@ export default () => {
      * Reset all relevant selector state to initial values.
      */
     function reset() {
+        setIsConfirmed(false);
         setElementHistory([]);
         setSelectedDOMElement(null);
         setHoveringDOMElement(null);
@@ -214,6 +219,28 @@ export default () => {
         });
     }
 
+    function urlToUniformDomain (url) {
+        if (url === null) {
+            return null;
+        }
+        let new_url = url.trim();
+        new_url = new_url.replace(/^\./, ""); // cookies can start like .www.example.com
+        new_url = new_url.replace(/^http(s)?:\/\//, "");
+        new_url = new_url.replace(/^www([0-9])?/, "");
+        new_url = new_url.replace(/^\./, "");
+        new_url = new_url.replace(/\/.*$/, "");
+        return new_url;
+    };
+
+    function handleConfirm() {
+        Promise.all([storage.setItem('local:selectedDOMElement', selectedDOMElementRef.current), storage.setMeta('local:selectedDOMElement', {url: urlToUniformDomain(window.location.href)}),]);
+        console.log("handleConfirm " + urlToUniformDomain(window.location.href));
+        notifications.show({
+            title: 'Confirmed', message: 'Cookie banner was selected'
+        });
+        setIsConfirmed(true);
+    }
+
     /**
      * Reset selection on press of escape key.
      * @param {KeyboardEvent} event
@@ -244,6 +271,7 @@ export default () => {
     }, [])
 
     return (<MantineProvider>
+        <Notifications />
         <Stack>
             <dom-selector
                 className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
@@ -252,7 +280,7 @@ export default () => {
                     pointerEvents: selectedDOMElement ? 'auto' : 'none',
                     userSelect: selectedDOMElement ? 'auto' : 'none'
                 }}>
-                <dom-selector-data style={{display: selectedDOMElement ? 'block' : 'none'}}>
+                <dom-selector-data style={{display: (selectedDOMElement && !isConfirmed) ? 'block': 'none'}}>
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button variant="default" size="xs" leftSection={<IconArrowUp size={14}/>}
                                 disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
@@ -267,7 +295,7 @@ export default () => {
                     </Group>
                     <Group justify="center" grow>
                         <Button size="xs" variant="light" color="green"
-                                leftSection={<IconCheck size={14}/>}>Confirm</Button>
+                                leftSection={<IconCheck size={14}/>} onClick={handleConfirm}>Confirm</Button>
                     </Group>
                 </dom-selector-data>
             </dom-selector>
