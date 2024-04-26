@@ -1,307 +1,273 @@
-import {useState, useEffect, useRef} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import './App.module.css';
 import '@mantine/core/styles.css';
-import {MantineProvider} from '@mantine/core';
-import {Stack, Group, Button, px} from '@mantine/core';
-import {IconArrowUp, IconArrowDown, IconX, IconCheck} from '@tabler/icons-react';
+import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
+import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
 
 export default () => {
-    const [isSelected, _setIsSelected] = useState(false);
-    const isSelectedRef = useRef(isSelected);
-    function setIsSelected(isSelected) {
-        isSelectedRef.current = isSelected;
-        _setIsSelected(isSelected);
-    }
     const [isSurfing, _setIsSurfing] = useState(false);
     const isSurfingRef = useRef(isSurfing);
+
     function setIsSurfing(isSurfing) {
         isSurfingRef.current = isSurfing;
         _setIsSurfing(isSurfing);
     }
+
     const [selectedDOMElement, _setSelectedDOMElement] = useState(null);
     const selectedDOMElementRef = useRef(selectedDOMElement);
+
+    const [scrollY, setScrollY] = useState(0);
+
     function setSelectedDOMElement(selectedDOMElement) {
         selectedDOMElementRef.current = selectedDOMElement;
         _setSelectedDOMElement(selectedDOMElement);
     }
-    const [coordinateHistory, _setCoordinateHistory] = useState({x: 0, y: 0})
-    const coordinateHistoryRef = useRef(coordinateHistory);
-    function setCoordinateHistory(history) {
-        coordinateHistoryRef.current = history;
-        _setCoordinateHistory(history);
-    }
+
+    const [hoveringDOMElement, setHoveringDOMElement] = useState(null);
 
     const isInactive = useRef(true);
 
     const [elementHistory, _setElementHistory] = useState([]);
     const elementHistoryRef = useRef(elementHistory);
+
     function setElementHistory(elHistory) {
         elementHistoryRef.current = elHistory;
         _setElementHistory(elHistory);
     }
 
-    const wrapRef = useRef(null);
-    // data is the dialog that is shown at the top left of the selected DOM element
-    const dataRef = useRef(null);
-
-    // sets size and styling properties of wrap to the properties of the selected node
-    function setStyle(node) {
+    /**
+     * sets size and styling properties of wrap to the properties of the selected node
+     * @param {Element} node
+     * @param {number} scrollY
+     * @return {Object<string, string>}
+     */
+    function wrapStyle(node, scrollY) {
+        if (!node) return {display: 'none'};
         const rect = node.getBoundingClientRect();
         const style = window.getComputedStyle(node);
-        wrapRef.current.style.top = rect.top + 'px';
-        wrapRef.current.style.left = rect.left + 'px';
-        wrapRef.current.style.width = rect.width + 'px';
-        wrapRef.current.style.height = rect.height + 'px';
-        wrapRef.current.style.setProperty('--bt', parseInt(style.borderTopWidth, 10) >= 0 ? style.borderTopWidth : '0px');
-        wrapRef.current.style.setProperty('--br', parseInt(style.borderRightWidth, 10) >= 0 ? style.borderRightWidth : '0px');
-        wrapRef.current.style.setProperty('--bb', parseInt(style.borderBottomWidth, 10) >= 0 ? style.borderBottomWidth : '0px');
-        wrapRef.current.style.setProperty('--bl', parseInt(style.borderLeftWidth, 10) >= 0 ? style.borderLeftWidth : '0px');
-        wrapRef.current.style.setProperty('--mt', (parseInt(style.marginTop, 10) >= 0 ? style.marginTop : '0px'));
-        wrapRef.current.style.setProperty('--mr', (parseInt(style.marginRight, 10) >= 0 ? style.marginRight : '0px'));
-        wrapRef.current.style.setProperty('--mb', (parseInt(style.marginBottom, 10) >= 0 ? style.marginBottom : '0px'));
-        wrapRef.current.style.setProperty('--ml', (parseInt(style.marginLeft, 10) >= 0 ? style.marginLeft : '0px'));
-        wrapRef.current.style.setProperty('--pt', (parseInt(style.paddingTop, 10) >= 0 ? style.paddingTop : '0px'));
-        wrapRef.current.style.setProperty('--pr', (parseInt(style.paddingRight, 10) >= 0 ? style.paddingRight : '0px'));
-        wrapRef.current.style.setProperty('--pb', (parseInt(style.paddingBottom, 10) >= 0 ? style.paddingBottom : '0px'));
-        wrapRef.current.style.setProperty('--pl', (parseInt(style.paddingLeft, 10) >= 0 ? style.paddingLeft : '0px'));
+        return {
+            display: 'block',
+            top: (rect.top >= 0) ? rect.top + 'px' : '0px',
+            left: (rect.left >= 0) ? rect.left + 'px' : '0px',
+            bottom: (rect.bottom >= 0) ? rect.bottom + 'px' : '0px',
+            width: rect.width + 'px',
+            height: (rect.top >= 0) ? rect.height + 'px' : Math.max(0, rect.height - Math.abs(Number(rect.top))),
+            '--bt': parseInt(style.borderTopWidth, 10) >= 0 ? style.borderTopWidth : '0px',
+            '--br': parseInt(style.borderRightWidth, 10) >= 0 ? style.borderRightWidth : '0px',
+            '--bb': parseInt(style.borderBottomWidth, 10) >= 0 ? style.borderBottomWidth : '0px',
+            '--bl': parseInt(style.borderBottomWidth, 10) >= 0 ? style.borderBottomWidth : '0px',
+            '--mt': (parseInt(style.marginTop, 10) >= 0 ? style.marginTop : '0px'),
+            '--mr': (parseInt(style.marginRight, 10) >= 0 ? style.marginRight : '0px'),
+            '--mb': (parseInt(style.marginBottom, 10) >= 0 ? style.marginBottom : '0px'),
+            '--ml': (parseInt(style.marginLeft, 10) >= 0 ? style.marginLeft : '0px'),
+            '--pt': (parseInt(style.paddingTop, 10) >= 0 ? style.paddingTop : '0px'),
+            '--pr': (parseInt(style.paddingRight, 10) >= 0 ? style.paddingRight : '0px'),
+            '--pb': (parseInt(style.paddingBottom, 10) >= 0 ? style.paddingBottom : '0px'),
+            '--pl': (parseInt(style.paddingLeft, 10) >= 0 ? style.paddingLeft : '0px')
+        };
     }
 
+    /**
+     * Maps mouse movement to the currently hovered element, such that it can be highlighted in realtime.
+     * @param {MouseEvent} e
+     */
     function mapE(e) {
-        // if either inactive or selected, we stop the mapping process
-        //if (inactive || wrap.classList.contains('selected')) return;
-        if (isInactive.current || isSelectedRef.current) return;
-        //wrap.classList.remove('surfing');
-        setIsSurfing(false);
-        //dataRef.current.removeAttribute('class');
-        // if scrolling: move history coordinates to client coordinates; if mousemove: move client coordinates to history coordinates
-        if (e.type && e.type === 'scroll') {
-            e.clientX = coordinateHistoryRef.current.x;
-            e.clientY = coordinateHistoryRef.current.y;
-        } else {
-            setCoordinateHistory({x: e.clientX, y: e.clientY});
-        }
+        if (isInactive.current || selectedDOMElementRef.current) return;
         const element = document.elementFromPoint(e.clientX, e.clientY);
         if (!element) return;
-        console.log("setting style on element:");
-        console.log(element);
-        setStyle(element);
 
-        //if (element.id || element.getAttribute("id")) info.innerHTML += `<span id>#${element.id || element.getAttribute("id")}</span>`;
-        //wrap.classList.add('surfing');
-        setIsSurfing(true);
-
-        setPosition();
+        setHoveringDOMElement(element);
     }
 
-    function setPosition() {
-        const rect = () => dataRef.current.getBoundingClientRect();
-        const sect = () => wrapRef.current.getBoundingClientRect();
-        if (rect().height + 20 > sect().height) dataRef.current.classList.add('outside');
-        if (rect().left + rect().width + 15 > window.innerWidth) dataRef.current.classList.add('fromright');
-        if (rect().top - 6 < 0) dataRef.current.classList.add('setbelow');
-        if (rect().top + rect().height + 15 > window.innerHeight) dataRef.current.classList.add('scrollable');
-    }
-
+    /**
+     * Reset all relevant selector state to initial values.
+     */
     function reset() {
-        //wrap.removeAttribute("class");
-        setIsSelected(false);
-        setIsSurfing(false);
-        //wrap.classList.add('inactive');
-        isInactive.current = true;
-        document.getElementsByTagName('dom-selector-data').item(0).removeAttribute('class');
+        setElementHistory([]);
         setSelectedDOMElement(null);
-        //wrap.removeAttribute("style");
-        document.getElementsByTagName('dom-selector').item(0).removeAttribute("style");
-    }
-
-    const selInnerElement = () => {
-        //if (!wrap.classList.contains('selected')) return;
-        if (!isSelectedRef.current) return;
-        if (selectedDOMElementRef.current) {
-            reset(); // Reset current selection
-            setSelectedDOMElement(elementHistoryRef.current[elementHistoryRef.current.length - 1]); // set to last element in history
-            setElementHistory(...elementHistoryRef.current.slice(0,-1)); // remove last element
-
-            let showPreview = true; // TODO
-            //if (showPreview) wrap.classList.add('selected');
-            if (showPreview) setIsSelected(true);
-            //wrap.classList.remove('surfing');
-            setIsSurfing(false);
-            if (showPreview) {
-                //wrap.classList.add('surfing');
-                setIsSurfing(true);
-            } else {
-                reset();
-            }
-
-            // Updating the UI
-            setStyle(selectedDOMElementRef.current);
-
-            //wrap.classList.add('surfing');
-            setIsSurfing(true);
-
-            setPosition();
-        }
-    };
-
-    function handleMouseover() {
-        //if (inactive || wrap.classList.contains('selected')) return;
-        if (isInactive.current || isSelectedRef.current) return;
-        //wrap.classList.add('surfing');
-        setIsSurfing(true);
-    }
-
-    function handleMouseout() {
-        //if (inactive || wrap.classList.contains('selected')) return;
-        if (isInactive.current || isSelectedRef.current) return;
-        //wrap.classList.remove('surfing');
+        setHoveringDOMElement(null);
         setIsSurfing(false);
+        isInactive.current = true;
     }
 
-    function handleMousedown(e) {
-        console.log("handle mousedown, isSelected: " + isSelectedRef.current);
-        if (isSelectedRef.current) {
-            return;
-        }
-        //if (wrap.classList.contains('inactive')) reject('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
-        if (isInactive.current) {
-            console.error('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
-            return;
-        }
-        setIsSelected(true);
-        //wrap.classList.remove('surfing');
-        setIsSurfing(false);
-        const selected = document.elementFromPoint(e.clientX, e.clientY);
-        setSelectedDOMElement(selected);
-        setElementHistory([...elementHistoryRef.current, selected]);
-        //wrap.classList.add('surfing');
-        setIsSurfing(true);
-        if (selected) console.log(selected); else console.error("Error: Failed to find the Selected element. Try to fetch again.")
-        //if (selected) resolve(selected); else reject('Error: Failed to find the Selected element. Try to fetch again.');
+    function totalWidth(rect) {
+        return rect.width + rect.paddingLeft + rect.paddingRight;
     }
 
-    function handleSelectParent() {
-        console.log("handleSelectParent, isSelected: " + isSelectedRef.current);
-        console.log("handleSelectParent, selectedDOMElement.parentElement: ");
-        console.log(selectedDOMElementRef.current.parentElement);
-        //if (!wrap.classList.contains('selected')) return;
-        if (!isSelectedRef.current) return;
-        if (selectedDOMElementRef.current && selectedDOMElementRef.current.parentElement) {
-            let parentEl = selectedDOMElementRef.current.parentElement;
-            let selectedRect = selectedDOMElementRef.current.getBoundingClientRect();
-            let parentRect = parentEl.getBoundingClientRect();
-            while (parentRect.width === 0 || parentRect.height === 0) {
-                if (!parentEl.parentElement) {
-                    return;
-                }
-                parentEl = parentEl.parentElement;
-                parentRect = parentEl.getBoundingClientRect();
+    function totalHeight(rect) {
+        return rect.height + rect.paddingTop + rect.paddingBottom;
+    }
+
+    /**
+     * @param {HTMLElement} node - If non-zero area, return it. Otherwise, climb up the tree to find nodes first parent has a non-zero area.
+     * @returns {HTMLElement}
+     */
+    function skipZeroAreaNodes(node) {
+        if (node && node.parentElement) {
+            let nodeRect = node.getBoundingClientRect();
+            while (nodeRect.width === 0 || nodeRect.height === 0) {
+                if (!node.parentElement) return null;
+                node = node.parentElement;
+                nodeRect = node.getBoundingClientRect();
             }
+            return node;
+        }
+    }
 
-            setElementHistory([...elementHistoryRef.current, selectedDOMElementRef.current])
+    /**
+     * Given an element, climb up as long as the parents have the same dimensions (height and width).
+     * @param {HTMLElement} startElement
+     * @return {HTMLElement}
+     */
+    function climbUpEquivalenceTree(startElement) {
+        if (startElement) {
+            let selected = startElement;
+            if (selected && skipZeroAreaNodes(selected.parentElement)) {
+                let parentEl = skipZeroAreaNodes(selected.parentElement);
+                let selectedRect = selected.getBoundingClientRect();
+                let parentRect = parentEl.getBoundingClientRect();
 
-            reset(); // Reset current selection
-            setSelectedDOMElement(parentEl);
-            let selected = parentEl;
-
-            parentEl = selected.parentElement;
-            if (parentEl) {
-                selectedRect = selected.getBoundingClientRect();
-                parentRect = parentEl.getBoundingClientRect();
-
-                while (selectedRect && parentEl && selectedRect.width === parentRect.width && selectedRect.height === parentRect.height && selectedRect.top === parentRect.top && selectedRect.left === parentRect.left) {
-                    setSelectedDOMElement(selected);
+                while (selected && parentEl && ((selectedRect.width === parentRect.width && selectedRect.height === parentRect.height) || (totalWidth(selectedRect) === totalWidth(parentRect) && totalHeight(selectedRect) === totalHeight(parentRect)))) {
                     selected = parentEl;
-                    parentEl = parentEl.parentElement;
-                    if (!selected || !parentEl) {
+                    parentEl = skipZeroAreaNodes(parentEl.parentElement);
+                    if (!parentEl) {
                         break;
                     }
                     selectedRect = selected.getBoundingClientRect();
                     parentRect = parentEl.getBoundingClientRect();
                 }
             }
-
-            //if (showPreview) wrap.classList.add('selected');
-            setIsSelected(true);
-            // for some time we first remove and then added, why?
-            //wrap.classList.remove('surfing');
-            //wrap.classList.add('surfing');
-            setIsSurfing(true);
-
-            // Updating the UI
-            //const rect = selected.getBoundingClientRect();
-            //const style = window.getComputedStyle(selected);
-            setStyle(selected);
-            console.log("selected parent, selected now is:");
-            console.log(selected);
-
-            //wrap.classList.add('surfing');
-            setIsSurfing(true);
-
-            setPosition();
+            return selected;
         }
     }
 
-    function handleCancelSelection() {
-        reset();
-        setElementHistory([]);
+    /**
+     * When user clicks, select the element at mouse location, sensibly.
+     * Sensible means: if the element at the location has some parent(s) with the same dimensions, choose the highest
+     * such parent.
+     * @param {MouseEvent} e
+     */
+    function handleMousedown(e) {
+        if (selectedDOMElementRef.current) {
+            return;
+        }
+        if (isInactive.current) {
+            console.error('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
+            return;
+        }
+        let selected = document.elementFromPoint(e.clientX, e.clientY);
+        selected = climbUpEquivalenceTree(selected);
+        setSelectedDOMElement(selected);
+        if (!selected) console.error("Error: Failed to find the Selected element. Try to fetch again.")
     }
 
+    /**
+     * We update a state value on scroll, to force the size/position of the wrapper (which makes the blue highlight)
+     * to be recalculated during scrolling. ie if selected element moves out of the screen, the selection should too.
+     */
+    function handleScroll() {
+        setScrollY(Math.round(window.scrollY));
+    }
+
+    /**
+     * Go up the DOM tree to the next sensible parent.
+     * Sensible means skipping parents with no area and skipping parents if multiple parents have the same dimensions.
+     */
+    function handleSelectParent() {
+        let startParent = skipZeroAreaNodes(selectedDOMElementRef.current.parentElement);
+        let selected = climbUpEquivalenceTree(startParent);
+        if (selected) {
+            setElementHistory([...elementHistoryRef.current, selectedDOMElementRef.current]);
+            //reset();
+            setSelectedDOMElement(selected);
+            // Updating the UI
+            //setStyle(selected);
+            //setPosition();
+        }
+    }
+
+    /**
+     * Pops the most recent element off the element history "stack"
+     */
+    function handleSelectChild() {
+        //if (!wrap.classList.contains('selected')) return;
+        if (!selectedDOMElementRef.current || elementHistoryRef.current.length === 0) return;
+
+        setSelectedDOMElement(elementHistoryRef.current[elementHistoryRef.current.length - 1]); // set to last element in history
+        setElementHistory([...elementHistoryRef.current.slice(0, -1)]); // remove last element
+    }
+
+    // start selector when message is received
     async function handleSelectorMessage(e, t, o) {
         o({status: "ok"});
         storage.getItem("local:selectorShowPreview").then(() => {
+            setIsSurfing(true);
             // if selectorShowPreview is true, this results in the data (dom-selector-data) dialog remaining after an element has been selected
-            if (!isInactive.current && !isSelectedRef.current) {
+            if (!isInactive.current && !selectedDOMElementRef.current) {
                 console.error('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
             } else {
-                if (isSelectedRef.current) reset();
+                if (selectedDOMElementRef.current) reset();
                 isInactive.current = false;
                 window.addEventListener('mousedown', handleMousedown, {once: true});
-                console.log("added event listener");
             }
         });
     }
 
+    /**
+     * Reset selection on press of escape key.
+     * @param {KeyboardEvent} event
+     */
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            reset();
+        }
+    }
+
     useEffect(() => {
-        isInactive.current = true;
         browser.runtime.onMessage.addListener(handleSelectorMessage);
-        window.addEventListener('mouseover', handleMouseover);
-        window.addEventListener('mouseout', handleMouseout);
+        //window.addEventListener('mouseover', handleMouseover);
+        //window.addEventListener('mouseout', handleMouseout);
         window.addEventListener('mousemove', mapE);
-        window.addEventListener('scroll', mapE);
+        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('keydown', handleKeydown);
 
         return () => {
             browser.runtime.onMessage.removeListener(handleSelectorMessage);
-            window.removeEventListener('mouseover', handleMouseover);
-            window.removeEventListener('mouseout', handleMouseout);
+            //window.removeEventListener('mouseover', handleMouseover);
+            //window.removeEventListener('mouseout', handleMouseout);
             window.removeEventListener('mousemove', mapE);
-            window.removeEventListener('scroll', mapE);
+            window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('mousedown', handleMousedown);
+            window.addEventListener('keydown', handleKeydown);
         }
     }, [])
 
     return (<MantineProvider>
         <Stack>
-            <dom-selector className={`${isSurfing ? 'surfing' : ''} ${isSelected ? 'selected' : ''}`} ref={wrapRef}>
-                <dom-selector-data ref={dataRef}>
+            <dom-selector
+                className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
+                style={{
+                    ...(selectedDOMElement ? wrapStyle(selectedDOMElement, scrollY) : wrapStyle(hoveringDOMElement, scrollY)),
+                    pointerEvents: selectedDOMElement ? 'auto' : 'none',
+                    userSelect: selectedDOMElement ? 'auto' : 'none'
+                }}>
+                <dom-selector-data style={{display: selectedDOMElement ? 'block' : 'none'}}>
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button variant="default" size="xs" leftSection={<IconArrowUp size={14}/>}
+                                disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
                                 className={'dom-selector-parent'} onClick={handleSelectParent}>Outer</Button>
                         <Button variant="default" size="xs" leftSection={<IconArrowDown size={14}/>}
-                                className={'dom-selector-parent'} onClick={selInnerElement}
-                        >Inner</Button>
+                                disabled={elementHistory.length === 0}
+                                className={'dom-selector-parent'} onClick={handleSelectChild}>Inner</Button>
                     </Group>
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button size="xs" variant="light" color="red" leftSection={<IconX size={14}/>}
-                                className={`dom-selector-closer`} onClick={handleCancelSelection}>Cancel</Button>
+                                className={`dom-selector-closer`} onClick={reset}>Cancel</Button>
                     </Group>
                     <Group justify="center" grow>
                         <Button size="xs" variant="light" color="green"
                                 leftSection={<IconCheck size={14}/>}>Confirm</Button>
-                    </Group>
-                    <Group>
-                        <dom-selector-info></dom-selector-info>
                     </Group>
                 </dom-selector-data>
             </dom-selector>

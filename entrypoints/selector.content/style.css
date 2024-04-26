@@ -7,10 +7,9 @@ dom-selector * {
 dom-selector {
     z-index: 999999999999999999;
     position: fixed;
-    top: 0;
+    background: #1e90ff77;
+/*    top: 0;
     left: 0;
-    width: 40px;
-    height: 40px;
     background: #1e90ff77;
     border-style: solid;
     border-color: #ff8c0099;
@@ -26,14 +25,16 @@ dom-selector {
     --pr: 0px;
     --pb: 0px;
     --pl: 0px;
+    border-width: var(--bt) var(--br) var(--bb) var(--bl);*/
 }
-dom-selector:not(.surfing) {
+.surfing {
+    display: block;
+}
+.notSurfing {
     display: none;
 }
-dom-selector {
-    border-width: var(--bt) var(--br) var(--bb) var(--bl);
-}
-dom-selector::before {
+
+dom-selector.surfing::before {
     box-sizing: content-box;
     content: " ";
     position: absolute;
@@ -43,7 +44,7 @@ dom-selector::before {
     left: calc(0px - var(--ml) - var(--bl));
     border-width: var(--mt) var(--mr) var(--mb) var(--ml);
 }
-dom-selector::after {
+dom-selector.surfing::after {
     box-sizing: content-box;
     content: " ";
     inset: 0;
@@ -65,68 +66,8 @@ dom-selector-data {
     background: #fff;
     border-radius: 6px;
     min-width: 250px;
+}
 
-}
-dom-selector:not(.selected) {
-    user-select: none;
-}
-dom-selector:not(.selected) dom-selector-closer {
-    display: none;
-}
-dom-selector-info {
-    color: #727888;
-    font-size: 14px;
-    font-weight: 500;
-    padding-right: 12px;
-    flex: 1;
-    max-width: 300px;
-}
-dom-selector-info span {
-    display: inline-block;
-}
-dom-selector-info span[node] {
-    color: purple;
-}
-dom-selector-info span[class] {
-    color: #00f;
-}
-dom-selector-info span[id] {
-    color: #ff8c00;
-}
-dom-selector-info span[display] {
-    color: brown;
-    padding-left: 10px;
-}
-dom-selector-info > div {
-    display: block;
-    margin: 5px auto;
-    font-size: 12px;
-}
-dom-selector-info div[dimension]:not(:last-child) {
-    border-bottom: 1px solid #0002;
-    padding-bottom: 5px;
-}
-dom-selector-info span[padding] {
-    color: green;
-    font-size: 12px;
-}
-dom-selector-info span[margin] {
-    color: orange;
-    font-size: 12px;
-}
-dom-selector-info div[border] {
-    color: #1e90ff;
-}
-dom-selector-info div[styling] {
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-}
-dom-selector-info div[styling] > span {
-    min-width: 14px;
-    min-height: 14px;
-    border: 1px solid #0005;
-}
 dom-selector-data.setbelow {
     top: 100%;
 }
