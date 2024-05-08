@@ -6,12 +6,11 @@ import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
 import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
+import {urlToUniformDomain} from '../modules/globals.js';
 
 export default () => {
     const [isSurfing, _setIsSurfing] = useState(false);
     const isSurfingRef = useRef(isSurfing);
-
-    const [isConfirmed, setIsConfirmed] = useState(false);
 
     function setIsSurfing(isSurfing) {
         isSurfingRef.current = isSurfing;
@@ -43,10 +42,10 @@ export default () => {
     /**
      * sets size and styling properties of wrap to the properties of the selected node
      * @param {Element} node
-     * @param {number} scrollY
+     * @param {number} _
      * @return {Object<string, string>}
      */
-    function wrapStyle(node, scrollY) {
+    function wrapStyle(node, _) {
         if (!node) return {display: 'none'};
         const rect = node.getBoundingClientRect();
         const style = window.getComputedStyle(node);
@@ -88,7 +87,6 @@ export default () => {
      * Reset all relevant selector state to initial values.
      */
     function reset() {
-        setIsConfirmed(false);
         setElementHistory([]);
         setSelectedDOMElement(null);
         setHoveringDOMElement(null);
@@ -204,11 +202,10 @@ export default () => {
     }
 
     // start selector when message is received
-    async function handleSelectorMessage(e, t, o) {
-        o({status: "ok"});
-        storage.getItem("local:selectorShowPreview").then(() => {
+    function handleSelectorMessage(message, sender, sendResponse) {
+        if (message === 'start_select') {
+            console.log("received start select message");
             setIsSurfing(true);
-            // if selectorShowPreview is true, this results in the data (dom-selector-data) dialog remaining after an element has been selected
             if (!isInactive.current && !selectedDOMElementRef.current) {
                 console.error('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
             } else {
@@ -216,29 +213,134 @@ export default () => {
                 isInactive.current = false;
                 window.addEventListener('mousedown', handleMousedown, {once: true});
             }
+            sendResponse("ok");
+        }
+    }
+
+    function element_is_hidden(e) {
+        let is_hidden = true;
+        let height = e.offsetHeight;
+        let width = e.offsetWidth;
+        if (height === undefined || width === undefined) {
+            return true;
+        }
+        try {
+            let cur = e;
+            while (cur) {
+                if (window.getComputedStyle(cur).getPropertyValue("opacity") === "0") {
+                    return true;
+                }
+                cur = cur.parentElement;
+            }
+        } catch (error) {
+        }
+        try {
+            is_hidden = (window.getComputedStyle(e).display === "none" || window.getComputedStyle(e).visibility === "hidden" || height === 0 || width === 0);
+        } catch (error) {
+        }
+        e.childNodes.forEach(function (item) {
+            is_hidden = is_hidden && element_is_hidden(item);
+        });
+        return is_hidden;
+    }
+
+    function extract_text_from_element(e, exclude_links = false) {
+        let text = [];
+        if (element_is_hidden(e) || (exclude_links && (e.nodeName === "A" || e.nodeName === "BUTTON"))) {
+            return text;
+        }
+        let cur_text = "";
+        let prv_item_type = "";
+        let children = e.childNodes;
+        children.forEach(function (item) {
+            if (item.textContent.trim() === "" || item.nodeName === "#comment") {
+                return;
+            }
+            if (item.nodeName === "BUTTON" && exclude_links === true) {
+                return;
+            } else if (item.nodeName === "A") {
+                if (exclude_links === true) {
+                    return;
+                }
+                let link_text = extract_text_from_element(item, exclude_links);
+                if (link_text.length > 1 || prv_item_type === "A") {
+                    if (cur_text.trim() !== "") {
+                        text.push(cur_text.trim());
+                        cur_text = "";
+                    }
+                    text = text.concat(link_text);
+                } else if (link_text.length === 1) {
+                    cur_text += " " + link_text[0].trim();
+                }
+            } else if (["#text", "EM", "STRONG", "I", "MARK"].includes(item.nodeName)) {
+                cur_text = cur_text + " " + item.textContent.trim();
+            } else if (["UL", "OL"].includes(item.nodeName)) {
+                let list_items = extract_text_from_element(item, exclude_links);
+                if (cur_text.trim() !== "") {
+                    cur_text = cur_text.trim() + " ";
+                }
+                text = text.concat(Array.from(list_items).map(x => cur_text + x));
+                cur_text = "";
+            } else {
+                if (cur_text.trim() !== "") {
+                    text.push(cur_text.trim());
+                    cur_text = "";
+                }
+                text = text.concat(extract_text_from_element(item, exclude_links));
+            }
+            prv_item_type = item.nodeName;
+        });
+        if (cur_text.trim() !== "") {
+            text.push(cur_text.trim());
+            cur_text = "";
+        }
+        return text.filter(x => {
+            return x !== undefined;
         });
     }
 
-    function urlToUniformDomain (url) {
-        if (url === null) {
-            return null;
+    function get_clickable_elements(parent) {
+        let elements = [];
+        for (let element of parent.getElementsByTagName("*")) {
+            if (!element_is_hidden(element) && ["DIV", "SPAN", "A", "BUTTON", "INPUT"].includes(element.tagName) && (element.tabIndex >= 0 || element.getAttribute("role") === "button" || element.getAttribute('onclick') !== null)) {
+                elements.push(element);
+            }
         }
-        let new_url = url.trim();
-        new_url = new_url.replace(/^\./, ""); // cookies can start like .www.example.com
-        new_url = new_url.replace(/^http(s)?:\/\//, "");
-        new_url = new_url.replace(/^www([0-9])?/, "");
-        new_url = new_url.replace(/^\./, "");
-        new_url = new_url.replace(/\/.*$/, "");
-        return new_url;
-    };
+        let filtered_elements = [];
+        for (let element of elements) {
+            let parent_found = false;
+            for (let parent of elements) {
+                if (element !== parent && parent.contains(element)) {
+                    parent_found = true;
+                }
+            }
+            if (parent_found === false) {
+                filtered_elements.push(element)
+            }
+        }
+        return filtered_elements;
+    }
 
-    function handleConfirm() {
-        Promise.all([storage.setItem('local:selectedDOMElement', selectedDOMElementRef.current), storage.setMeta('local:selectedDOMElement', {url: urlToUniformDomain(window.location.href)}),]);
-        console.log("handleConfirm " + urlToUniformDomain(window.location.href));
+    async function handleConfirm() {
         notifications.show({
             title: 'Confirmed', message: 'Cookie banner was selected'
         });
-        setIsConfirmed(true);
+
+        let selected = selectedDOMElementRef.current;
+        reset();
+        let text = extract_text_from_element(selected, true).join('\n').replace(/\s+/g, ' ');
+        let clickableElements = get_clickable_elements(selected);
+
+        let localSelection = {
+            notice: selected,
+            noticeText: text,
+            translatedNoticeSentences: [],
+            clickableElements,
+            translatedClickableElements: []
+        };
+        await Promise.all([storage.setItem('local:selection', localSelection), storage.setMeta('local:selection', {url: urlToUniformDomain(window.location.href)})]);
+        console.log("handleConfirm " + urlToUniformDomain(window.location.href));
+        await browser.runtime.sendMessage("selected_notice");
     }
 
     /**
@@ -271,7 +373,7 @@ export default () => {
     }, [])
 
     return (<MantineProvider>
-        <Notifications />
+        <Notifications style={{zIndex: 999999999999999}}/>
         <Stack>
             <dom-selector
                 className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
@@ -280,7 +382,7 @@ export default () => {
                     pointerEvents: selectedDOMElement ? 'auto' : 'none',
                     userSelect: selectedDOMElement ? 'auto' : 'none'
                 }}>
-                <dom-selector-data style={{display: (selectedDOMElement && !isConfirmed) ? 'block': 'none'}}>
+                <dom-selector-data style={{display: (selectedDOMElement && isSurfing) ? 'block' : 'none'}}>
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button variant="default" size="xs" leftSection={<IconArrowUp size={14}/>}
                                 disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
