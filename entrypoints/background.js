@@ -1,5 +1,10 @@
 import {
-    classIndexToString, classStringToIndex, datetimeToExpiry, escapeString, SCANSTAGE, urlToUniformDomain
+    classIndexToString,
+    classStringToIndex,
+    datetimeToExpiry,
+    escapeString,
+    SCANSTAGE,
+    urlToUniformDomain
 } from "./modules/globals.js";
 import {extractFeatures} from "./modules/extractor.js";
 import {predictClass} from "./modules/predictor.js";
@@ -7,7 +12,7 @@ import {analyzeCMP} from "./modules/cmp.js";
 import {db} from "./modules/db.js";
 import {split} from 'sentence-splitter';
 import {storage} from 'wxt/storage';
-import {AutoModelForSequenceClassification, AutoTokenizer, env, pipeline} from '@xenova/transformers';
+import {AutoModelForSequenceClassification, AutoTokenizer, env} from '@xenova/transformers';
 
 export default defineBackground({
     type: 'module', main() {
@@ -21,34 +26,17 @@ export default defineBackground({
         env.backends.onnx.wasm.numThreads = 1;
 
         /**
-         * Retrieves models from hugging face. You would think that we would need to store them in browser.storage.
-         * But the models are functions, thus cannot be stored. But they are cached somewhere either way (so we don't
-         * download the model for every sentence).
-         * @return {Promise<Awaited<PreTrainedTokenizer|PreTrainedModel>[]>}
+         * Classification of cookie notice sentence
+         * @param {PreTrainedTokenizer} tokenizer
+         * @param {PreTrainedModel} model
+         * @param {string} sentence
+         * @return {Promise<*>}
          */
-        async function retrieveModels() {
-            return Promise.all([await AutoTokenizer.from_pretrained('Xenova/bert-base-uncased'), await AutoModelForSequenceClassification.from_pretrained("snastal/purpose_detection_model")]);
-        }
-
-        browser.runtime.onInstalled.addListener(retrieveModels);
-
-        // Create generic classify function, which will be reused for the different types of events.
-        async function classify(text) {
-            // Skip initial check for local models, since we are not loading any local models.
-            env.allowLocalModels = false;
-
-            // Due to a bug in onnxruntime-web, we must disable multithreading for now.
-            // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
-            env.backends.onnx.wasm.numThreads = 1;
-
-            let tokenizer, model;
-            [tokenizer, model] = await retrieveModels();
-
+        async function classifySentencePurpose(tokenizer, model, sentence) {
             // Actually run the model on the input text
-            let inputs = await tokenizer(text);
-            let res = await model(inputs);
-            return res;
-        };
+            let inputs = await tokenizer(sentence);
+            return await model(inputs);
+        }
 
 
         /**
@@ -69,7 +57,7 @@ export default defineBackground({
                 // 1. clear cookies
                 // 2. send message to content script to start selection
                 // 2. translate texts from cookie banner, and buttons inside it
-                // 3. run BERT on text and buttons, classify
+                // 3. run BERT on text and buttons, classifySentencePurpose
 
                 await resetStorage();
                 await clearCookies();
@@ -90,12 +78,27 @@ export default defineBackground({
                     .map(item => {
                         return item.raw;
                     });
+                const USE_QUANTIZED = false;
+                let classifications = [];
 
-                // let classifications = [await classify(sentences[0])];
-                let classifications = await Promise.all(sentences.map(async sentence => {
-                    let res = await classify(sentence);
+                // Skip initial check for local models, since we are not loading any local models.
+                env.allowLocalModels = false;
+
+                // Due to a bug in onnxruntime-web, we must disable multithreading for now.
+                // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
+                env.backends.onnx.wasm.numThreads = 1;
+
+                let purposeDetectionTokenizer = await AutoTokenizer.from_pretrained("snastal/purpose_detection_model", {
+                    quantized: USE_QUANTIZED
+                });
+                let purposeDetectionModel = await AutoModelForSequenceClassification.from_pretrained("snastal/purpose_detection_model", {
+                    quantized: USE_QUANTIZED
+                });
+                classifications = await Promise.all(sentences.map(async sentence => {
+                    let res = await classifySentencePurpose(purposeDetectionTokenizer, purposeDetectionModel, sentence);
                     return getPrediction(res);
                 }));
+
                 console.log(classifications);
                 let count = classifications.reduce((acc, cur) => acc + cur, 0);
                 console.log(count);
@@ -144,11 +147,6 @@ export default defineBackground({
             return true; // Need this to avoid 'message port closed' error
         });
 
-        const NOCHECK_EXPIRY = ["OptanonConsent", "OptanonAlertBoxClosed", "CookieConsent"];
-
-        const UPDATE_LIMIT = 10;
-        const MINTIME = 120000;
-
         /**
          * Construct a string formatted key that uniquely identifies the given cookie object.
          * @param {Object}    cookieDat Stores the cookie data, expects attributes name, domain and path.
@@ -165,7 +163,7 @@ export default defineBackground({
         }
 
         function getPrediction(modelRes) {
-            const { data } = modelRes.logits;
+            const {data} = modelRes.logits;
             const maxIndex = data.reduce((maxIdx, curValue, curIdx, arr) => (curValue > arr[maxIdx] ? curIdx : maxIdx), 0);
             return maxIndex;
         }
@@ -303,7 +301,7 @@ export default defineBackground({
 
 
         /**
-         * Using the cookie input, extract features from the cookie and classify it, retrieving a label.
+         * Using the cookie input, extract features from the cookie and classifySentencePurpose it, retrieving a label.
          * @param  {Object} feature_input   Transformed cookie data input, for the feature extraction.
          * @return {Promise<Number>}        Cookie category label as an integer, ranging from [0,3].
          */
@@ -447,7 +445,7 @@ export default defineBackground({
         }
 
         /**
-         * Retrieve the cookie and classify it.
+         * Retrieve the cookie and classifySentencePurpose it.
          * @param {Object} newCookie Raw cookie object directly from the browser.
          * @param {Object} storeUpdate Whether
          */
