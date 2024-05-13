@@ -7,6 +7,7 @@ import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
 import {urlToUniformDomain} from '../modules/globals.js';
+import {getSingleSelector} from './optimal_select.js';
 
 export default () => {
     const [isSurfing, _setIsSurfing] = useState(false);
@@ -26,6 +27,8 @@ export default () => {
         selectedDOMElementRef.current = selectedDOMElement;
         _setSelectedDOMElement(selectedDOMElement);
     }
+
+    const clickableElements = useRef([]);
 
     const [hoveringDOMElement, setHoveringDOMElement] = useState(null);
 
@@ -92,6 +95,7 @@ export default () => {
         setHoveringDOMElement(null);
         setIsSurfing(false);
         isInactive.current = true;
+        clickableElements.current = [];
     }
 
     function totalWidth(rect) {
@@ -328,18 +332,23 @@ export default () => {
 
         let selected = selectedDOMElementRef.current;
         reset();
-        let text = extract_text_from_element(selected, true).join('\n').replace(/\s+/g, ' ');
-        let clickableElements = get_clickable_elements(selected);
+        let noticeText = extract_text_from_element(selected, true).join('\n').replace(/\s+/g, ' ');
+        clickableElements.current = get_clickable_elements(selected);
+        let clickableObjects = [];
+        for (let i = 0; i < clickableElements.current.length; i++) {
+            clickableObjects.push({
+                selector: getSingleSelector(clickableElements.current[i]),
+                text: extract_text_from_element(clickableElements.current[i]).join(' '),
+                label: null
+            });
+        }
 
         let localSelection = {
-            notice: selected,
-            noticeText: text,
-            translatedNoticeSentences: [],
-            clickableElements,
-            translatedClickableElements: []
+            notice: {selector: getSingleSelector(selected), text: noticeText, label: null},
+            clickableObjects: clickableObjects
         };
+        console.log("localSelection as created in App.jsx", localSelection);
         await Promise.all([storage.setItem('local:selection', localSelection), storage.setMeta('local:selection', {url: urlToUniformDomain(window.location.href)})]);
-        console.log("handleConfirm " + urlToUniformDomain(window.location.href));
         await browser.runtime.sendMessage("selected_notice");
     }
 

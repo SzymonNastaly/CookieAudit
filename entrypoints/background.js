@@ -14,6 +14,7 @@ import {split} from 'sentence-splitter';
 import {storage} from 'wxt/storage';
 import {AutoModelForSequenceClassification, AutoTokenizer, env} from '@xenova/transformers';
 
+// noinspection JSUnusedGlobalSymbols
 export default defineBackground({
     type: 'module', main() {
         //browser.cookies.onChanged.addListener(cookieListener);
@@ -33,11 +34,32 @@ export default defineBackground({
          * @return {Promise<*>}
          */
         async function classifySentencePurpose(tokenizer, model, sentence) {
+            if (tokenizer == null) throw new Error('Tokenizer has to be set');
+            if (model == null) throw new Error('Model has to be set');
+            if (sentence == null) throw new Error('Sentence has to be set');
             // Actually run the model on the input text
             let inputs = await tokenizer(sentence);
             return await model(inputs);
         }
 
+        /**
+         * @param {PreTrainedTokenizer} tokenizer
+         * @param {PreTrainedModel} model
+         * @param {string} text
+         * @return {Promise<*>}
+         */
+        async function classifyInteractiveElement(tokenizer, model, text) {
+            if (tokenizer == null) throw new Error('Tokenizer has to be set');
+            if (model == null) throw new Error('Model has to be set');
+            if (text == null) throw new Error('Text has to be set');
+            console.log("starting classifyInteractiveElement");
+            let inputs = await tokenizer(text);
+            return await model(inputs);
+        }
+
+        const Purpose = Object.freeze({
+            Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5
+        });
 
         /**
          * Handlers for all messages sent to the background script.
@@ -69,17 +91,18 @@ export default defineBackground({
                 console.log("reacting to selected_notice");
                 sendResponse("ok");
                 let selection = await storage.getItem('local:selection');
-                console.assert(selection && selection !== {}, "local:selection should not be empty");
+                let {url} = await storage.getMeta('local:selection');
+
+                if (selection == null) throw new Error("local:selection should be set");
 
                 // translation of selection elements
-                let translatedNoticeText = (await translateToEnglish(selection.noticeText)).resultText;
+                let translatedNoticeText = (await translateToEnglish(selection.notice.text)).resultText;
                 let sentences = split(translatedNoticeText)
                     .filter(item => item.type === 'Sentence')
                     .map(item => {
                         return item.raw;
                     });
                 const USE_QUANTIZED = false;
-                let classifications = [];
 
                 // Skip initial check for local models, since we are not loading any local models.
                 env.allowLocalModels = false;
@@ -88,20 +111,33 @@ export default defineBackground({
                 // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
                 env.backends.onnx.wasm.numThreads = 1;
 
-                let purposeDetectionTokenizer = await AutoTokenizer.from_pretrained("snastal/purpose_detection_model", {
+                const [purposeDetectionTokenizer, purposeDetectionModel] = await Promise.all([await AutoTokenizer.from_pretrained("snastal/purpose_detection_model", {
                     quantized: USE_QUANTIZED
-                });
-                let purposeDetectionModel = await AutoModelForSequenceClassification.from_pretrained("snastal/purpose_detection_model", {
+                }), await AutoModelForSequenceClassification.from_pretrained("snastal/purpose_detection_model", {
                     quantized: USE_QUANTIZED
-                });
-                classifications = await Promise.all(sentences.map(async sentence => {
+                })]);
+
+                const purposeClassifications = await Promise.all(sentences.map(async sentence => {
                     let res = await classifySentencePurpose(purposeDetectionTokenizer, purposeDetectionModel, sentence);
                     return getPrediction(res);
                 }));
+                selection.notice.label = Math.max(...purposeClassifications);
 
-                console.log(classifications);
-                let count = classifications.reduce((acc, cur) => acc + cur, 0);
-                console.log(count);
+                const [interactiveElementsTokenizer, interactiveElementsModel] = await Promise.all([await AutoTokenizer.from_pretrained("snastal/interactive_elements_model", {
+                    quantized: USE_QUANTIZED
+                }), await AutoModelForSequenceClassification.from_pretrained("snastal/interactive_elements_model", {
+                    quantized: USE_QUANTIZED
+                })]);
+
+                await Promise.all(selection.clickableObjects.map(async obj => {
+                    let translatedText = (await translateToEnglish(obj.text)).resultText;
+                    let res = await classifyInteractiveElement(interactiveElementsTokenizer, interactiveElementsModel, translatedText);
+                    obj.label = getIELabel(res);
+                    return obj.label;
+                }));
+
+                await storage.setItem('local:selection', selection);
+
 
                 let scan = {
                     'stage': SCANSTAGE[1],
@@ -164,8 +200,20 @@ export default defineBackground({
 
         function getPrediction(modelRes) {
             const {data} = modelRes.logits;
+            return data.reduce((maxIdx, curValue, curIdx, arr) => (curValue > arr[maxIdx] ? curIdx : maxIdx), 0);
+        }
+
+        /**
+         * Converts logits into the purpose of the interactive element.
+         * @param {Object} modelRes The result of the interactive_element_model
+         * @return {number} Integer that corresponds to a value in the Purpose object
+         */
+        function getIELabel(modelRes) {
+            console.log("modelRes", modelRes);
+            const {data} = modelRes.logits;
+            console.log("data", data);
             const maxIndex = data.reduce((maxIdx, curValue, curIdx, arr) => (curValue > arr[maxIdx] ? curIdx : maxIdx), 0);
-            return maxIndex;
+            if (maxIndex === 0) return Purpose.Accept; else if (maxIndex === 1) return Purpose.Close; else if (maxIndex === 2) return Purpose.Settings; else if (maxIndex === 3) return Purpose.Other; else if (maxIndex === 4) return Purpose.Reject; else if (maxIndex === 5) return Purpose.SaveSettings; else throw new Error('Impossible maxIndex');
         }
 
         /**
@@ -308,9 +356,8 @@ export default defineBackground({
         const classifyCookie = async function (_, feature_input) {
             // Feature extraction timing
             let features = extractFeatures(feature_input);
-            let label = await predictClass(features, 3); // 3 from cblk_pscale default
-
-            return label;
+             // 3 from cblk_pscale default
+            return await predictClass(features, 3);
         };
 
         /**
@@ -448,6 +495,7 @@ export default defineBackground({
          * Retrieve the cookie and classifySentencePurpose it.
          * @param {Object} newCookie Raw cookie object directly from the browser.
          * @param {Object} storeUpdate Whether
+         * @param overrideTimeCheck
          */
         const handleCookie = async function (newCookie, storeUpdate, overrideTimeCheck) {
 
