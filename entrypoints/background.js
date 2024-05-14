@@ -1,10 +1,5 @@
 import {
-    classIndexToString,
-    classStringToIndex,
-    datetimeToExpiry,
-    escapeString,
-    SCANSTAGE,
-    urlToUniformDomain
+    classIndexToString, classStringToIndex, datetimeToExpiry, escapeString, SCANSTAGE, urlToUniformDomain
 } from "./modules/globals.js";
 import {extractFeatures} from "./modules/extractor.js";
 import {predictClass} from "./modules/predictor.js";
@@ -129,7 +124,7 @@ export default defineBackground({
                     quantized: USE_QUANTIZED
                 })]);
 
-                await Promise.all(selection.clickableObjects.map(async obj => {
+                await Promise.all(selection.interactiveObjects.map(async obj => {
                     let translatedText = (await translateToEnglish(obj.text)).resultText;
                     let res = await classifyInteractiveElement(interactiveElementsTokenizer, interactiveElementsModel, translatedText);
                     obj.label = getIELabel(res);
@@ -138,13 +133,26 @@ export default defineBackground({
 
                 await storage.setItem('local:selection', selection);
 
+                let interactiveElements = {};
+                interactiveElements[Purpose.Accept] = []
+                interactiveElements[Purpose.Close] = []
+                interactiveElements[Purpose.Settings] = []
+                interactiveElements[Purpose.Other] = []
+                interactiveElements[Purpose.Reject] = []
+                interactiveElements[Purpose.SaveSettings] = []
 
+                for (let i = 0; i < selection.interactiveObjects.length; i++) {
+                    let obj = selection.interactiveObjects[i];
+                    interactiveElements[obj.label].push(obj.selector);
+                }
+                
                 let scan = {
                     'stage': SCANSTAGE[1],
                     'scanStart': Date.now(),
                     'scanEnd': null,
                     'cmp': null,
                     'url': url,
+                    'interactiveElements': interactiveElements,
                     'nonnecessary': [],
                     'wrongcat': [],
                     'undeclared': [],
@@ -356,7 +364,7 @@ export default defineBackground({
         const classifyCookie = async function (_, feature_input) {
             // Feature extraction timing
             let features = extractFeatures(feature_input);
-             // 3 from cblk_pscale default
+            // 3 from cblk_pscale default
             return await predictClass(features, 3);
         };
 

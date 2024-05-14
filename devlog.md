@@ -1,7 +1,23 @@
 # Devlog
 ## May 12, 2024
 ### Integrating interactive_elements_model
-Retrieving the interactive elements is done with the function
+We load the models/tokenizer in a Promise.all() expression. Further we also classify the interactive elements
+in a Promise.all() - in there we translate, classify, convert to a label, and store that label in the selection variable.
+The local storage `selection` is then of the form:
+```
+{
+  notice: {
+    selector: 'some query selector',
+    text: 'text of the notice',
+    label: 0 (no analytics/advertising) | 1 (analytics/advertising detected)
+  },
+  interactiveObjects: [{
+    selector: 'some query selector',
+    text: 'text of the interactive element',
+    label: integer label corresponding to the Purpose Object
+  }]
+}
+```
 
 ## May 11, 2024
 ### ONNX conversion

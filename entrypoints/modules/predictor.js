@@ -88,7 +88,7 @@ export const predictClass = async function (features, nfactor) {
     try {
         let classScores = [];
         for (let i = 0; i < forests.length; i++) {
-            classScores.push(Math.exp(getForestScore(forests[i], features)));
+            classScores.push(Math.exp(await getForestScore(forests[i], features)));
         }
         let totalScore = classScores.reduce((total,num) => {return total + num}, 0);
         let probabilities = classScores.map((x) => {return x / totalScore});

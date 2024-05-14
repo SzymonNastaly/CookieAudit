@@ -28,7 +28,7 @@ export default () => {
         _setSelectedDOMElement(selectedDOMElement);
     }
 
-    const clickableElements = useRef([]);
+    const interactiveElements = useRef([]);
 
     const [hoveringDOMElement, setHoveringDOMElement] = useState(null);
 
@@ -95,7 +95,7 @@ export default () => {
         setHoveringDOMElement(null);
         setIsSurfing(false);
         isInactive.current = true;
-        clickableElements.current = [];
+        interactiveElements.current = [];
     }
 
     function totalWidth(rect) {
@@ -333,22 +333,22 @@ export default () => {
         let selected = selectedDOMElementRef.current;
         reset();
         let noticeText = extract_text_from_element(selected, true).join('\n').replace(/\s+/g, ' ');
-        clickableElements.current = get_clickable_elements(selected);
-        let clickableObjects = [];
-        for (let i = 0; i < clickableElements.current.length; i++) {
-            clickableObjects.push({
-                selector: getSingleSelector(clickableElements.current[i]),
-                text: extract_text_from_element(clickableElements.current[i]).join(' '),
+        interactiveElements.current = get_clickable_elements(selected);
+        let interactiveObjects = [];
+        for (let i = 0; i < interactiveElements.current.length; i++) {
+            interactiveObjects.push({
+                selector: getSingleSelector(interactiveElements.current[i]),
+                text: extract_text_from_element(interactiveElements.current[i]).join(' '),
                 label: null
             });
         }
 
-        let localSelection = {
+        let selection = {
             notice: {selector: getSingleSelector(selected), text: noticeText, label: null},
-            clickableObjects: clickableObjects
+            interactiveObjects: interactiveObjects
         };
-        console.log("localSelection as created in App.jsx", localSelection);
-        await Promise.all([storage.setItem('local:selection', localSelection), storage.setMeta('local:selection', {url: urlToUniformDomain(window.location.href)})]);
+        console.log("selection as created in App.jsx", selection);
+        await Promise.all([storage.setItem('local:selection', selection), storage.setMeta('local:selection', {url: urlToUniformDomain(window.location.href)})]);
         await browser.runtime.sendMessage("selected_notice");
     }
 
