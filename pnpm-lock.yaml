@@ -29,9 +29,12 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
-      sentence-splitter:
-        specifier: ^5.0.0
-        version: 5.0.0
+      sizzle:
+        specifier: ^2.3.10
+        version: 2.3.10
+      smoothscroll-polyfill:
+        specifier: ^0.4.4
+        version: 0.4.4
       vite-plugin-top-level-await:
         specifier: ^1.4.1
         version: 1.4.1(rollup@4.13.0)(vite@5.2.6(@types/node@20.11.30)(sass@1.72.0)(sugarss@4.0.1(postcss@8.4.38)))
@@ -778,9 +781,6 @@ packages:
   '@tabler/icons@3.2.0':
     resolution: {integrity: sha512-h8GQ2rtxgiSjltrVz4vcopAxTPSpUSUi5nBfJ09H3Bk4fJk6wZ/dVUjzhv/BHfDwGTkAxZBiYe/Q/T95cPeg5Q==}
 
-  '@textlint/ast-node-types@13.4.1':
-    resolution: {integrity: sha512-qrZyhCh8Ekk6nwArx3BROybm9BnX6vF7VcZbijetV/OM3yfS4rTYhoMWISmhVEP2H2re0CtWEyMl/XF+WdvVLQ==}
-
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
 
@@ -951,9 +951,6 @@ packages:
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
-
-  boundary@2.0.0:
-    resolution: {integrity: sha512-rJKn5ooC9u8q13IMCrW0RSp31pxBCHE3y9V/tp3TdWSLf8Em3p6Di4NBpfzbJge9YjjFEsD0RtFEjtvHL5VyEA==}
 
   boxen@7.1.1:
     resolution: {integrity: sha512-2hCgjEmP8YLWQ130n2FerGv7rYpfBmnmp9Uy2Le1vge6X3gZIfSmEzP5QTDElFxcvVcXlEn8Aq6MU/PZygIOog==}
@@ -2370,9 +2367,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  sentence-splitter@5.0.0:
-    resolution: {integrity: sha512-9Mvf7L8vwpPzkH0/HtXzCbmVkyj4aQXdeG7h8ighRvO0hvcZEy2OUEjeIlnM/z4EX4vBacEfpESC65Oa2rWOig==}
-
   serialize-error@9.1.1:
     resolution: {integrity: sha512-6uZQLGyUkNA4N+Zii9fYukmNu9PEA1F5rqcwXzN/3LtBjwl2dFBbVZ1Zyn08/CGkB4H440PIemdOQBt1Wvjbrg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -2421,6 +2415,9 @@ packages:
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
+  sizzle@2.3.10:
+    resolution: {integrity: sha512-kPGev+SiByuzi/YPDTqCwdKLWCaN9+14ve86yH0gP6Efue04xjLYWJrcLC6y1buFyIVXkwHNXPsOTEd1MYVPbQ==}
+
   slice-ansi@5.0.0:
     resolution: {integrity: sha512-FC+lgizVPfie0kkhqUScwRu1O/lF6NOgJmlCgK+/LYxDCTk8sGelYaHDhFcDN+Sn3Cv+3VSa4Byeo+IMCzpMgQ==}
     engines: {node: '>=12'}
@@ -2428,6 +2425,9 @@ packages:
   slice-ansi@7.1.0:
     resolution: {integrity: sha512-bSiSngZ/jWeX93BqeIAbImyTbEihizcwNjFoRUIY/T1wWQsfsm2Vw1agPKylXvQTU7iASGdHhyqRlqQzfz+Htg==}
     engines: {node: '>=18'}
+
+  smoothscroll-polyfill@0.4.4:
+    resolution: {integrity: sha512-TK5ZA9U5RqCwMpfoMq/l1mrH0JAR7y7KRvOBx0n2869aLxch+gT9GhN3yUfjiw+d/DiF1mKo14+hd62JyMmoBg==}
 
   source-map-js@1.2.0:
     resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
@@ -2509,9 +2509,6 @@ packages:
 
   strip-literal@1.3.0:
     resolution: {integrity: sha512-PugKzOsyXpArk0yWmUwqOZecSO0GH0bPoctLcqNDH9J04pVW3lflYE0ujElBGTloevcxF5MofAOZ7C5l2b+wLg==}
-
-  structured-source@4.0.0:
-    resolution: {integrity: sha512-qGzRFNJDjFieQkl/sVOI2dUjHKRyL9dAJi2gCPGJLbJHBIkyOHxjuocpIEfbLioX+qSJpvbYdT49/YCdMznKxA==}
 
   sugarss@4.0.1:
     resolution: {integrity: sha512-WCjS5NfuVJjkQzK10s8WOBY+hhDxxNt/N6ZaGwxFZ+wN3/lKKFSaaKUNecULcTTvE4urLcKaZFQD8vO0mOZujw==}
@@ -3421,8 +3418,6 @@ snapshots:
 
   '@tabler/icons@3.2.0': {}
 
-  '@textlint/ast-node-types@13.4.1': {}
-
   '@types/babel__core@7.20.5':
     dependencies:
       '@babel/parser': 7.24.1
@@ -3597,8 +3592,6 @@ snapshots:
   bluebird@3.7.2: {}
 
   boolbase@1.0.0: {}
-
-  boundary@2.0.0: {}
 
   boxen@7.1.1:
     dependencies:
@@ -5115,11 +5108,6 @@ snapshots:
     dependencies:
       lru-cache: 6.0.0
 
-  sentence-splitter@5.0.0:
-    dependencies:
-      '@textlint/ast-node-types': 13.4.1
-      structured-source: 4.0.0
-
   serialize-error@9.1.1:
     dependencies:
       type-fest: 2.19.0
@@ -5170,6 +5158,8 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
+  sizzle@2.3.10: {}
+
   slice-ansi@5.0.0:
     dependencies:
       ansi-styles: 6.2.1
@@ -5179,6 +5169,8 @@ snapshots:
     dependencies:
       ansi-styles: 6.2.1
       is-fullwidth-code-point: 5.0.0
+
+  smoothscroll-polyfill@0.4.4: {}
 
   source-map-js@1.2.0: {}
 
@@ -5264,10 +5256,6 @@ snapshots:
   strip-literal@1.3.0:
     dependencies:
       acorn: 8.11.3
-
-  structured-source@4.0.0:
-    dependencies:
-      boundary: 2.0.0
 
   sugarss@4.0.1(postcss@8.4.38):
     dependencies:

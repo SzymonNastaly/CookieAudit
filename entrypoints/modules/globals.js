@@ -17,18 +17,63 @@ const enableExtraOptions = false;
  * - "finished": the summary is being displayed
  */
 export const SCANSTAGE = ["initial", "necessary", "all", "finished"];
+export const STAGE2 = Object.freeze({
+    NOT_STARTED: "not_started",
+    NOTICE_SELECTION: "notice_selection",
+    NOTICE_INTERACTION: "notice_interaction",
+    INTERACTION_WO_NOTICE: "interaction_without_notice",
+    FINISHED: "finished"
+});
+
+export const INITIAL_SCAN = {
+    'stage': SCANSTAGE[0],
+    'stage2': STAGE2.NOT_STARTED,
+    'scanStart': null,
+    'scanEnd': null,
+    'url': null,
+    'interactiveElements': [],
+    "ieToInteract": [],
+    "purposeDeclared": false,
+    "noticeDetected": false,
+    "rejectDetected": false,
+    "closeSaveDetected": false,
+    "aaCookiesAfterReject": [],
+    "aaCookiesAfterSave": [],
+    "aaCookiesAfterClose": [],
+    "aaCookiesWONoticeInteraction": []
+};
+export const INTERACTION_STATE = Object.freeze({
+    NOT_STARTED: "not_started",
+    SENT_RELOAD: "sent_reload",
+    SENT_INTERACT: "sent_interact",
+    WO_NOTICE_SENT_RELOAD: "wo_notice_sent_reload",
+    WO_NOTICE_SENT_INTERACT: "wo_notice_sent_interact",
+    FINISHED: "finished"
+});
+
+export const INITIAL_SELECTION = {
+    notice: null, interactiveObjects: []
+};
+export const INITIAL_INTERACTION = {
+    task: null, ie: null, state: INTERACTION_STATE.NOT_STARTED
+}
+
 
 /**
  * These fixes are displayed on the summary according to what needs to be fixed.
  */
 export const FIXES = {
-  "nonessential": `You must receive users' consent before you use any cookies except strictly necessary cookies. <a href="https://www.cookieaudit.app#consent" class="learn" target="_blank">Learn more</a>`,
-  "undeclared": `You must declare and provide information about each cookie before consent is received. <a href="https://www.cookieaudit.app#declaration" class="learn" target="_blank">Learn more</a>`,
-  "wrongcat": `We classified some cookies differently than you, make sure you put each cookie in the correct category. <a href="https://www.cookieaudit.app#categories" class="learn" target="_blank">Learn more</a>`,
-  "wrongexpiry-time": `The expiration time of some cookies is much higher than declared. Lower the expiry date on the cookie or correct the declaration. <a href="https://www.cookieaudit.app#expiry" class="learn" target="_blank">Learn more</a>`,
-  "wrongexpiry-session": `You declared some cookies as session-cookies but set them to be persistent.`,
-  "noreject": `Add a "Reject" button to the initial consent popup. <a href="https://www.cookieaudit.app#noreject" class="learn" target="_blank">Learn more</a>`,
-  "preselected": `Make sure non-essential categories are not preselected in the consent popup. <a href="https://www.cookieaudit.app#preselected" class="learn" target="_blank">Learn more</a>`,
+    "nonessential": `You must receive users' consent before you use any cookies except strictly necessary cookies. <a href="https://www.cookieaudit.app#consent" class="learn" target="_blank">Learn more</a>`,
+    "undeclared": `You must declare and provide information about each cookie before consent is received. <a href="https://www.cookieaudit.app#declaration" class="learn" target="_blank">Learn more</a>`,
+    "wrongcat": `We classified some cookies differently than you, make sure you put each cookie in the correct category. <a href="https://www.cookieaudit.app#categories" class="learn" target="_blank">Learn more</a>`,
+    "wrongexpiry-time": `The expiration time of some cookies is much higher than declared. Lower the expiry date on the cookie or correct the declaration. <a href="https://www.cookieaudit.app#expiry" class="learn" target="_blank">Learn more</a>`,
+    "wrongexpiry-session": `You declared some cookies as session-cookies but set them to be persistent.`,
+    "noreject": `Add a "Reject" button to the initial consent popup. <a href="https://www.cookieaudit.app#noreject" class="learn" target="_blank">Learn more</a>`,
+    "preselected": `Make sure non-essential categories are not preselected in the consent popup. <a href="https://www.cookieaudit.app#preselected" class="learn" target="_blank">Learn more</a>`,
+}
+
+export function delay(time) {
+    return new Promise(resolve => setTimeout(resolve, time));
 }
 
 /**
@@ -37,17 +82,15 @@ export const FIXES = {
  * @returns {Promise} A promise which will eventually contain the retrieved value.
  */
 function chromeWorkaround(stType, key) {
-  return new Promise((resolve, reject) => {
-    stType.get([key], function (result) {
-      if (browser.runtime.lastError) {
-        reject(
-          "Failed to retrieve data from storage: " + browser.runtime.lastError
-        );
-      } else {
-        resolve(result[key]);
-      }
+    return new Promise((resolve, reject) => {
+        stType.get([key], function (result) {
+            if (browser.runtime.lastError) {
+                reject("Failed to retrieve data from storage: " + browser.runtime.lastError);
+            } else {
+                resolve(result[key]);
+            }
+        });
     });
-  });
 }
 
 /**
@@ -57,29 +100,24 @@ function chromeWorkaround(stType, key) {
  * @param {String} key Unique storage key identifier
  * @param {Boolean} override If true, will override the existing value.
  */
-const setStorageValue = async function (
-  newValue,
-  stType,
-  key,
-  override = true
-) {
-  let obj;
-  if (override) {
-    obj = {};
-    obj[key] = newValue;
-    stType.set(obj);
-  } else {
-    try {
-      let cValue = await chromeWorkaround(stType, key);
-      if (cValue === undefined) {
+const setStorageValue = async function (newValue, stType, key, override = true) {
+    let obj;
+    if (override) {
         obj = {};
         obj[key] = newValue;
         stType.set(obj);
-      }
-    } catch (err) {
-      throw err;
+    } else {
+        try {
+            let cValue = await chromeWorkaround(stType, key);
+            if (cValue === undefined) {
+                obj = {};
+                obj[key] = newValue;
+                stType.set(obj);
+            }
+        } catch (err) {
+            throw err;
+        }
     }
-  }
 };
 
 /**
@@ -89,25 +127,25 @@ const setStorageValue = async function (
  * @returns
  */
 const getStorageValue = async function (stType, key) {
-  // try to retrieve the value
-  let value = undefined;
-  try {
-    value = await chromeWorkaround(stType, key);
-  } catch (err) {
-    console.error("Failed to access storage! Error: " + err.message);
-  }
-
-  // error handling
-  if (value === undefined) {
-    console.warn(`Warning: Value '${key}' not found in storage!`);
-    if (Array.isArray(defaultConfig[key])) {
-      value = [...defaultConfig[key]];
-    } else {
-      value = defaultConfig[key];
+    // try to retrieve the value
+    let value = undefined;
+    try {
+        value = await chromeWorkaround(stType, key);
+    } catch (err) {
+        console.error("Failed to access storage! Error: " + err.message);
     }
-    setStorageValue(value, stType, key, (override = false));
-  }
-  return value;
+
+    // error handling
+    if (value === undefined) {
+        console.warn(`Warning: Value '${key}' not found in storage!`);
+        if (Array.isArray(defaultConfig[key])) {
+            value = [...defaultConfig[key]];
+        } else {
+            value = defaultConfig[key];
+        }
+        await setStorageValue(value, stType, key, false);
+    }
+    return value;
 };
 
 /**
@@ -118,14 +156,14 @@ const getStorageValue = async function (stType, key) {
  * @param {Function} callback   Callback function that will be executed as soon as the data is available, receives data as first argument.
  */
 export const getExtensionFile = async function (url, dtype, callback, errorCallback = null) {
-  let res = await fetch(url)
-  if (dtype === "text") {
-    callback(await res.text());
-  } else if (dtype === "json") {
-    callback(await res.json());
-  } else {
-    console.error("Wrong dtype");
-  }
+    let res = await fetch(url)
+    if (dtype === "text") {
+        callback(await res.text());
+    } else if (dtype === "json") {
+        callback(await res.json());
+    } else {
+        console.error("Wrong dtype");
+    }
 };
 
 /**
@@ -134,10 +172,10 @@ export const getExtensionFile = async function (url, dtype, callback, errorCallb
  * @return {String}       Decoded String.
  */
 export const escapeString = function (str) {
-  if (typeof str != "string") {
-    str = String(str);
-  }
-  return unescape(encodeURIComponent(str));
+    if (typeof str != "string") {
+        str = String(str);
+    }
+    return unescape(encodeURIComponent(str));
 };
 
 /**
@@ -147,28 +185,28 @@ export const escapeString = function (str) {
  * @return {String}        Cleaned domain string.
  */
 export const urlToUniformDomain = function (url) {
-  if (url === null) {
-    return null;
-  }
-  let new_url = url.trim();
-  new_url = new_url.replace(/^\./, ""); // cookies can start like .www.example.com
-  new_url = new_url.replace(/^http(s)?:\/\//, "");
-  new_url = new_url.replace(/^www([0-9])?/, "");
-  new_url = new_url.replace(/^\./, "");
-  new_url = new_url.replace(/\/.*$/, "");
-  return new_url;
+    if (url === null) {
+        return null;
+    }
+    let new_url = url.trim();
+    new_url = new_url.replace(/^\./, ""); // cookies can start like .www.example.com
+    new_url = new_url.replace(/^http(s)?:\/\//, "");
+    new_url = new_url.replace(/^www([0-9])?/, "");
+    new_url = new_url.replace(/^\./, "");
+    new_url = new_url.replace(/\/.*$/, "");
+    return new_url;
 };
 
 const domainRemoveNoise = function (url) {
-  if (url === null) {
-    return null;
-  }
-  let new_url = url.trim();
-  new_url = new_url.replace(/^\./, "");
-  new_url = new_url.replace(/^http(s)?:\/\//, "");
-  new_url = new_url.replace(/^\./, "");
-  new_url = new_url.replace(/\/.*$/, "");
-  return new_url;
+    if (url === null) {
+        return null;
+    }
+    let new_url = url.trim();
+    new_url = new_url.replace(/^\./, "");
+    new_url = new_url.replace(/^http(s)?:\/\//, "");
+    new_url = new_url.replace(/^\./, "");
+    new_url = new_url.replace(/\/.*$/, "");
+    return new_url;
 };
 
 /**
@@ -177,11 +215,11 @@ const domainRemoveNoise = function (url) {
  * @return {String}               Transformed domain.
  */
 const cleanDomain = (domainOrURL) => {
-  try {
-    return urlToUniformDomain(new URL(domainOrURL).hostname);
-  } catch (error) {
-    return urlToUniformDomain(domainOrURL);
-  }
+    try {
+        return urlToUniformDomain(new URL(domainOrURL).hostname);
+    } catch (error) {
+        return urlToUniformDomain(domainOrURL);
+    }
 };
 
 /**
@@ -191,8 +229,8 @@ const cleanDomain = (domainOrURL) => {
  * @return {Number}         Expiration time in seconds. Zero if session cookie.
  */
 export const datetimeToExpiry = function (cookie) {
-  let curTS = Math.floor(Date.now() / 1000);
-  return cookie.session ? 0 : cookie.expirationDate - curTS;
+    let curTS = Math.floor(Date.now() / 1000);
+    return cookie.session ? 0 : cookie.expirationDate - curTS;
 };
 
 /**
@@ -201,25 +239,29 @@ export const datetimeToExpiry = function (cookie) {
  * @returns {String} human-readable string
  */
 export const classIndexToString = (idx) => {
-  switch (idx) {
-    case -1:
-      return "Unknown";
-    case 0:
-      return "Necessary";
-    case 1:
-      return "Functionality";
-    case 2:
-      return "Analytical";
-    case 3:
-      return "Advertising";
-    case 4:
-      return "Uncategorized";
-    case 5:
-      return "Social Media";
-    default:
-      return "Invalid Category Index";
-  }
+    switch (idx) {
+        case -1:
+            return "Unknown";
+        case 0:
+            return "Necessary";
+        case 1:
+            return "Functionality";
+        case 2:
+            return "Analytical";
+        case 3:
+            return "Advertising";
+        case 4:
+            return "Uncategorized";
+        case 5:
+            return "Social Media";
+        default:
+            return "Invalid Category Index";
+    }
 };
+
+export function isAALabel(idx) {
+    return idx === 2 || idx === 3 || idx === 5;
+}
 
 /**
  * Transform class string to index. Inverse of above
@@ -227,24 +269,24 @@ export const classIndexToString = (idx) => {
  * @param classStr
  */
 export const classStringToIndex = (classStr) => {
-  switch (classStr) {
-    case "Unknown":
-      return -1;
-    case "Necessary":
-      return 0;
-    case "Functionality":
-      return 1;
-    case "Analytical":
-      return 2;
-    case "Advertising":
-      return 3;
-    case "Uncategorized":
-      return 4;
-    case "Social Media":
-      return 5;
-    default:
-      return -1;
-  }
+    switch (classStr) {
+        case "Unknown":
+            return -1;
+        case "Necessary":
+            return 0;
+        case "Functionality":
+            return 1;
+        case "Analytical":
+            return 2;
+        case "Advertising":
+            return 3;
+        case "Uncategorized":
+            return 4;
+        case "Social Media":
+            return 5;
+        default:
+            return -1;
+    }
 };
 
 /**
@@ -254,25 +296,16 @@ export const classStringToIndex = (classStr) => {
  * @param {Array} args List of positional arguments for the localization.
  */
 const setStaticLocaleText = (elemID, locID, args = []) => {
-  try {
-    document.getElementById(elemID).textContent = browser.i18n.getMessage(
-      locID,
-      args
-    );
-  } catch (err) {
-    console.error(
-      `Failed to apply localization for id '${elemID}' with text '${locID}'.`
-    );
-    console.error("Original Error Message: " + err.message);
-  }
+    try {
+        document.getElementById(elemID).textContent = browser.i18n.getMessage(locID, args);
+    } catch (err) {
+        console.error(`Failed to apply localization for id '${elemID}' with text '${locID}'.`);
+        console.error("Original Error Message: " + err.message);
+    }
 };
 
 // default configuration
 var defaultConfig = undefined;
-getExtensionFile(
-  browser.runtime.getURL("ext_data/default_config.json"),
-  "json",
-  (df) => {
+getExtensionFile(browser.runtime.getURL("ext_data/default_config.json"), "json", (df) => {
     defaultConfig = df;
-  }
-);
+});

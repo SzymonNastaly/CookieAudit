@@ -12,7 +12,7 @@ export default defineConfig({
         permissions: ["cookies", "activeTab", "storage", "unlimitedStorage", "tabs", "scripting"],
         web_accessible_resources: [
             {
-                matches: ['*://*/*'],
+                matches: ["<all_urls>"],
                 resources: ['ext_data/*'],
             }
         ],

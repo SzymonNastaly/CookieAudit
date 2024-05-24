@@ -2,9 +2,9 @@ import {useState, useEffect, useRef} from 'react';
 import './App.css';
 import '@mantine/core/styles.css';
 import {MantineProvider} from '@mantine/core';
-import {Badge, Container, Stack, Text, Group, Center, Button} from '@mantine/core';
+import {Badge, Container, Stack, Text, Group, Center, Button, Divider} from '@mantine/core';
 import {storage} from 'wxt/storage';
-import {SCANSTAGE, FIXES} from '../modules/globals.js'
+import {STAGE2} from '../modules/globals.js'
 
 
 /**
@@ -12,7 +12,7 @@ import {SCANSTAGE, FIXES} from '../modules/globals.js'
  * @returns {String} Url.
  */
 async function getURL() {
-    let queryOptions = {active: true, lastFocusedWindow: true};
+    let queryOptions = {active: true};
     // `tab` will either be a `tabs.Tab` instance or `undefined`.
     let [tab] = await browser.tabs.query(queryOptions);
     if (!tab || !tab.url) {
@@ -31,48 +31,26 @@ export default function App() {
     }
 
     useEffect(() => {
-        let intervalID;
         storage.getItem("local:scan").then((localScan) => {
-            if (localScan) {
+            console.log("getting local:scan", localScan);
+            if (localScan != null) {
                 setScan(localScan);
-                if (localScan.stage && (localScan.stage === SCANSTAGE[1] || localScan.stage === SCANSTAGE[2])) {
-                    console.log("localscan is stage 1 or 2: ");
-                    console.log(localScan);
-                    intervalID = window.setInterval(() => {
-                        try {
-                            browser.runtime.sendMessage("analyze_cookies");
-                        } catch (err) {
-                            console.error("error analyzing cookies");
-                        }
-                    }, 3000);
-                }
             }
         });
 
         const unwatch = storage.watch('local:scan', (newScan, _) => {
-            console.log("changed scan in storage: ");
-            console.log(newScan);
             setScan(newScan);
         });
         return () => {
-            window.clearInterval(intervalID);
             unwatch();
         };
     }, []);
 
-    function isStage(scanState, stageIndex) {
-        if (scanState && scanState.stage === SCANSTAGE[stageIndex]) {
-            return true;
-        } else return !scanState && stageIndex === 0;
-    }
-
-    async function startSelect () {
-        // Ensure chrome.tabs is available (meaning this is running within a Chrome extension with appropriate permissions)
-        if (browser.tabs) {
-            const tabs = await browser.tabs.query({active: true, currentWindow: true});
-            await browser.tabs.sendMessage(tabs[0].id, "start_select");
+    function isStage(scanState, stage) {
+        if (stage === STAGE2.NOT_STARTED) {
+            return scanState == null || scanState['stage2'] === stage;
         } else {
-            console.log('This function is meant to be run in a Chrome Extension.');
+            return scanState && scanState['stage2'] === stage;
         }
     }
 
@@ -88,20 +66,21 @@ export default function App() {
         }
 
         console.log("Starting scan...");
-        //await startSelect();
-
-        /*try {
-            const res = await browser.runtime.sendMessage("clear_cookies");
-            console.log(`cleared cookies: ${res}`);
-        } catch (err) {
-            console.error("error clearing cookies");
-            return;
-        }*/
-
-        browser.runtime.sendMessage("start_scan");
+        const {msg} = await browser.runtime.sendMessage({msg: "start_scan"});
+        if (msg !== "ok") throw new Error("start_scan was not confirmed by background.js");
 
         // close popup
         window.close();
+    }
+
+    function noNotice() {
+        const {msg} = browser.runtime.sendMessage({msg: "no_notice"});
+        if (msg !== "ok") throw new Error("no_notice was not confirmed by background.js");
+    }
+
+    function cancelScan() {
+        const {msg} = browser.runtime.sendMessage({msg: "cancel_scan"});
+        if (msg !== "ok") throw new Error("cancel_scan was not confirmed by background.js");
     }
 
     function warnings(s) {
@@ -110,7 +89,8 @@ export default function App() {
             elements.push(<Group><Badge color="red">{s.nonnecessary.length}</Badge>Non-essential cookies</Group>);
 
             let cookieWarnings = s.nonnecessary.map((c) => {
-                return <Stack align="flex-start" justify="flex-start" bg="var(--mantine-color-red-1)" gap="xs" key={c.name}>
+                return <Stack align="flex-start" justify="flex-start" bg="var(--mantine-color-red-1)" gap="xs"
+                              key={c.name}>
                     <Text>{c.name}</Text>
                     <Text>{c.domain}</Text>
                     <Text>{c.current_label}</Text>
@@ -122,24 +102,31 @@ export default function App() {
     }
 
 
-
     return (<MantineProvider>
         <Center maw={800} p={20}>
             <Stack>
                 <Group justify="center">
                     <Text>CookieAudit 2</Text>
                 </Group>
-                <Group justfy="center" grow>
-                    {isStage(scan, 0) && (<Container>
+                <Group justify="center" grow>
+                    {isStage(scan,STAGE2.NOT_STARTED) && (<Container>
                         <Text>Open the target website</Text>
                         <Text>Close all other tabs before starting a scan</Text>
                         <Button variant="light" color="green" onClick={startScan}>Start Scan</Button>
                     </Container>)}
-                    {isStage(scan, 1) && (<Container>
-                        <Text>Reload the page and reject all non-essential cookies. Then navigate around the
-                            website.</Text>
-                        {warnings(scan)}
+                    {isStage(scan,STAGE2.NOTICE_SELECTION) && (<Container>
+                        <Text>Please select the cookie notice.</Text>
+                        <Text>If there is no notice, skip the selection:</Text>
+                        <Button variant="light" color="orange" onClick={noNotice}>No Cookie Notice</Button>
                     </Container>)}
+                    {isStage(scan,STAGE2.INTERACTION_WO_NOTICE) && (<Container>
+                        <Text>Please scroll through the website and click on a few links.</Text>
+                        <Button variant="light" color="orange" onClick={noNotice}>Finished Interaction</Button>
+                    </Container>)}
+                </Group>
+                <Divider my="md" />
+                <Group justify="center" grow>
+                    <Button variant="light" color="red" onClick={cancelScan}>Cancel Scan</Button>
                 </Group>
             </Stack>
         </Center>

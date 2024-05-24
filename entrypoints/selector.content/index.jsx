@@ -12,7 +12,7 @@ import App from './App.jsx';
 
 
 export default defineContentScript({
-    matches: ['*://*/*'],
+    matches: ["<all_urls>"],
 
     async main(ctx) {
         const ui = await createIntegratedUi(ctx, {
@@ -34,7 +34,6 @@ export default defineContentScript({
                 root?.unmount();
             },
         });
-
         ui.mount();
 
         // storage.getItems(["local:selectorAutoEnable", "local:selectorShowPreview"]).then((e) => {

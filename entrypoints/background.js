@@ -1,55 +1,78 @@
 import {
-    classIndexToString, classStringToIndex, datetimeToExpiry, escapeString, SCANSTAGE, urlToUniformDomain
+    classIndexToString,
+    datetimeToExpiry,
+    escapeString,
+    SCANSTAGE,
+    STAGE2,
+    INITIAL_SELECTION,
+    INITIAL_SCAN,
+    INITIAL_INTERACTION,
+    INTERACTION_STATE,
+    isAALabel,
+    urlToUniformDomain,
+    delay
 } from "./modules/globals.js";
 import {extractFeatures} from "./modules/extractor.js";
 import {predictClass} from "./modules/predictor.js";
-import {analyzeCMP} from "./modules/cmp.js";
-import {db} from "./modules/db.js";
-import {split} from 'sentence-splitter';
 import {storage} from 'wxt/storage';
-import {AutoModelForSequenceClassification, AutoTokenizer, env} from '@xenova/transformers';
+import {env, pipeline} from '@xenova/transformers';
+
+/**
+ * @typedef {Object} CookieData
+ * @property {number} current_label - The current label value.
+ * @property {string} domain - The domain associated with the cookie.
+ * @property {string} name - The name of the cookie.
+ */
+
+/**
+ * @typedef {Object.<string, CookieData>} CookieCollection
+ * A collection of cookies, where each key is a string representing the cookie identifier
+ * and the value is an object containing the cookie data.
+ */
 
 // noinspection JSUnusedGlobalSymbols
 export default defineBackground({
     type: 'module', main() {
-        //browser.cookies.onChanged.addListener(cookieListener);
+        browser.cookies.onChanged.addListener(cookieListener);
 
-        // Skip initial check for local models, since we are not loading any local models.
-        env.allowLocalModels = false;
-
-        // Due to a bug in onnxruntime-web, we must disable multithreading for now.
-        // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
-        env.backends.onnx.wasm.numThreads = 1;
+        const UPDATE_LIMIT = 10;
+        const MINTIME = 120000;
 
         /**
-         * Classification of cookie notice sentence
-         * @param {PreTrainedTokenizer} tokenizer
-         * @param {PreTrainedModel} model
-         * @param {string} sentence
-         * @return {Promise<*>}
+         * I don't entirely understand why. But by using this singleton we fix the problem that if the model is used many
+         * times, too much memory is allocated.
          */
-        async function classifySentencePurpose(tokenizer, model, sentence) {
-            if (tokenizer == null) throw new Error('Tokenizer has to be set');
-            if (model == null) throw new Error('Model has to be set');
-            if (sentence == null) throw new Error('Sentence has to be set');
-            // Actually run the model on the input text
-            let inputs = await tokenizer(sentence);
-            return await model(inputs);
+        class PurposePipelineSingleton {
+            static instance = null;
+
+            /**
+             * @param quantized
+             * @return {Promise<function>}
+             */
+            static async getInstance(quantized = false) {
+                if (this.instance === null) {
+                    this.instance = pipeline("text-classification", "snastal/purpose_detection_model", {quantized: quantized});
+                }
+                return this.instance;
+            }
         }
 
         /**
-         * @param {PreTrainedTokenizer} tokenizer
-         * @param {PreTrainedModel} model
-         * @param {string} text
-         * @return {Promise<*>}
+         * Same explanation as for the PurposePipelineSingleton. You probably want to continue using the models in this form.
          */
-        async function classifyInteractiveElement(tokenizer, model, text) {
-            if (tokenizer == null) throw new Error('Tokenizer has to be set');
-            if (model == null) throw new Error('Model has to be set');
-            if (text == null) throw new Error('Text has to be set');
-            console.log("starting classifyInteractiveElement");
-            let inputs = await tokenizer(text);
-            return await model(inputs);
+        class IEPipelineSingleton {
+            static instance = null;
+
+            /**
+             * @param {boolean} quantized
+             * @return {Promise<function>}
+             */
+            static async getInstance(quantized = false) {
+                if (this.instance === null) {
+                    this.instance = pipeline("text-classification", "snastal/interactive_elements_model", {quantized: quantized});
+                }
+                return this.instance;
+            }
         }
 
         const Purpose = Object.freeze({
@@ -59,136 +82,266 @@ export default defineBackground({
         /**
          * Handlers for all messages sent to the background script.
          */
-        browser.runtime.onMessage.addListener(async function (request, _, sendResponse) {
-            if (request === "get_cookies") {
-                getCookiesFromStorage().then((cookies) => {
-                    sendResponse(cookies);
-                });
-            } else if (request === "clear_cookies") {
-                console.log("background is clearing cookies...");
-                await clearCookies();
-                sendResponse(true);
-            } else if (request === "start_scan") {
-                sendResponse("ok");
-                // 0. reset old storage data
-                // 1. clear cookies
-                // 2. send message to content script to start selection
-                // 2. translate texts from cookie banner, and buttons inside it
-                // 3. run BERT on text and buttons, classifySentencePurpose
+        browser.runtime.onMessage.addListener(function (message, _, sendResponse) {
+            let {msg} = message;
+            if (msg === "get_cookies") {
+                (async () => {
+                    const cookies = await getCookiesFromStorage();
+                    sendResponse({msg: "ok", data: cookies});
+                })();
+                return true; // return is necessary for async response
+            } else if (msg === "clear_cookies") {
+                (async () => {
+                    await clearCookies();
+                    sendResponse({msg: "ok"});
+                })();
+                return true;
+            } else if (msg === "start_scan") {
+                sendResponse({msg: "ok"});
+                (async () => {
+                    await resetStorage();
+                    await clearCookies();
+                    let scan = await storage.getItem('local:scan');
+                    scan.stage2 = STAGE2.NOTICE_SELECTION;
+                    scan["scanStart"] = Date.now();
+                    let tabs = await browser.tabs.query({active: true});
+                    scan["url"] = tabs[0].url;
+                    await storage.setItem('local:scan', scan);
+                    const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "start_select"});
+                    if (response?.msg !== "ok") throw new Error("start_select not confirmed by selector");
+                })();
+            } else if (msg === "selected_notice") {
+                sendResponse({msg: "ok"});
+                let interactiveElements;
+                (async () => {
+                    let selection = await storage.getItem('local:selection');
+                    if (selection == null) throw new Error("local:selection should be set");
 
-                await resetStorage();
-                await clearCookies();
+                    let scan = await storage.getItem("local:scan");
+                    scan["noticeDetected"] = true;
+                    await storage.setItem("local:scan", scan);
 
-                // start select in the content script
-                const tabs = await browser.tabs.query({active: true, currentWindow: true});
-                await browser.tabs.sendMessage(tabs[0].id, "start_select");
-            } else if (request === "selected_notice") {
-                console.log("reacting to selected_notice");
-                sendResponse("ok");
-                let selection = await storage.getItem('local:selection');
-                let {url} = await storage.getMeta('local:selection');
+                    // translation of selection elements
+                    let translationResponse = await translateToEnglish(selection.notice.text);
+                    let translatedNoticeText = translationResponse.resultText;
 
-                if (selection == null) throw new Error("local:selection should be set");
+                    const segmenterEn = new Intl.Segmenter('en', {granularity: 'sentence'});
+                    const segmentIter = segmenterEn.segment(translatedNoticeText);
+                    const sentences = Array.from(segmentIter).map(obj => obj.segment);
 
-                // translation of selection elements
-                let translatedNoticeText = (await translateToEnglish(selection.notice.text)).resultText;
-                let sentences = split(translatedNoticeText)
-                    .filter(item => item.type === 'Sentence')
-                    .map(item => {
-                        return item.raw;
+                    const USE_QUANTIZED = true;
+                    // Skip initial check for local models, since we are not loading any local models.
+                    env.allowLocalModels = false;
+
+                    // Due to a bug in onnxruntime-web, we must disable multithreading for now.
+                    // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
+                    env.backends.onnx.wasm.numThreads = 1;
+
+                    let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
+                    if (purposeClassifier == null) throw new Error("Purpose Classifier is null");
+                    const purposeClassifications = (await purposeClassifier(sentences)).map(res => {
+                        return parseInt(res.label);
                     });
-                const USE_QUANTIZED = false;
+                    purposeClassifier = null;
+                    selection.notice.label = Math.max(...purposeClassifications);
+                    scan = await storage.getItem("local:scan");
+                    scan["purposeDeclared"] = (selection.notice.label > 0);
+                    await storage.setItem("local:scan", scan);
 
-                // Skip initial check for local models, since we are not loading any local models.
-                env.allowLocalModels = false;
 
-                // Due to a bug in onnxruntime-web, we must disable multithreading for now.
-                // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
-                env.backends.onnx.wasm.numThreads = 1;
+                    let ieClassifier = await IEPipelineSingleton.getInstance(USE_QUANTIZED);
+                    if (ieClassifier == null) throw new Error("IE Classifier was null");
 
-                const [purposeDetectionTokenizer, purposeDetectionModel] = await Promise.all([await AutoTokenizer.from_pretrained("snastal/purpose_detection_model", {
-                    quantized: USE_QUANTIZED
-                }), await AutoModelForSequenceClassification.from_pretrained("snastal/purpose_detection_model", {
-                    quantized: USE_QUANTIZED
-                })]);
+                    const translatedTexts = await Promise.all(selection.interactiveObjects.map(async obj => {
+                        let text = obj.text;
+                        let res = await translateToEnglish(text);
+                        return res.resultText
+                    }));
+                    const labels = (await ieClassifier(translatedTexts)).map(res => {
+                        return getIELabel(res);
+                    });
+                    for (let i = 0; i < labels.length; i++) {
+                        selection.interactiveObjects[i].label = labels[i];
+                    }
 
-                const purposeClassifications = await Promise.all(sentences.map(async sentence => {
-                    let res = await classifySentencePurpose(purposeDetectionTokenizer, purposeDetectionModel, sentence);
-                    return getPrediction(res);
-                }));
-                selection.notice.label = Math.max(...purposeClassifications);
+                    ieClassifier = null;
 
-                const [interactiveElementsTokenizer, interactiveElementsModel] = await Promise.all([await AutoTokenizer.from_pretrained("snastal/interactive_elements_model", {
-                    quantized: USE_QUANTIZED
-                }), await AutoModelForSequenceClassification.from_pretrained("snastal/interactive_elements_model", {
-                    quantized: USE_QUANTIZED
-                })]);
+                    await storage.setItem('local:selection', selection);
 
-                await Promise.all(selection.interactiveObjects.map(async obj => {
-                    let translatedText = (await translateToEnglish(obj.text)).resultText;
-                    let res = await classifyInteractiveElement(interactiveElementsTokenizer, interactiveElementsModel, translatedText);
-                    obj.label = getIELabel(res);
-                    return obj.label;
-                }));
+                    interactiveElements = {};
+                    interactiveElements[Purpose.Accept] = []
+                    interactiveElements[Purpose.Close] = []
+                    interactiveElements[Purpose.Settings] = []
+                    interactiveElements[Purpose.Other] = []
+                    interactiveElements[Purpose.Reject] = []
+                    interactiveElements[Purpose.SaveSettings] = []
 
-                await storage.setItem('local:selection', selection);
+                    for (let i = 0; i < selection.interactiveObjects.length; i++) {
+                        let obj = selection.interactiveObjects[i];
+                        interactiveElements[obj.label].push(obj);
+                    }
 
-                let interactiveElements = {};
-                interactiveElements[Purpose.Accept] = []
-                interactiveElements[Purpose.Close] = []
-                interactiveElements[Purpose.Settings] = []
-                interactiveElements[Purpose.Other] = []
-                interactiveElements[Purpose.Reject] = []
-                interactiveElements[Purpose.SaveSettings] = []
+                    scan = await storage.getItem("local:scan");
+                    scan["stage"] = SCANSTAGE[1];
+                    scan["stage2"] = STAGE2.NOTICE_INTERACTION;
+                    scan["interactiveElements"] = interactiveElements;
+                    scan["rejectDetected"] = (interactiveElements[Purpose.Reject].length > 0);
+                    scan["closeSaveDetected"] = (interactiveElements[Purpose.Close].length > 0) || (interactiveElements[Purpose.SaveSettings].length > 0);
+                    let ieToInteract = [];
+                    for (const iElement of interactiveElements[Purpose.Reject]) {
+                        ieToInteract.push(iElement);
+                    }
+                    for (const iElement of interactiveElements[Purpose.Close]) {
+                        ieToInteract.push(iElement);
+                    }
+                    for (const iElement of interactiveElements[Purpose.SaveSettings]) {
+                        ieToInteract.push(iElement);
+                    }
+                    scan["ieToInteract"] = ieToInteract;
+                    await storage.setItem("local:scan", scan);
 
-                for (let i = 0; i < selection.interactiveObjects.length; i++) {
-                    let obj = selection.interactiveObjects[i];
-                    interactiveElements[obj.label].push(obj.selector);
-                }
-                
-                let scan = {
-                    'stage': SCANSTAGE[1],
-                    'scanStart': Date.now(),
-                    'scanEnd': null,
-                    'cmp': null,
-                    'url': url,
-                    'interactiveElements': interactiveElements,
-                    'nonnecessary': [],
-                    'wrongcat': [],
-                    'undeclared': [],
-                    'multideclared': [],
-                    'wrongexpiry': [],
-                    'consentNotice': null,
-                    'advanced': false,
-                    'cmpWarnings': []
-                };
-                await storage.setItem('local:scan', scan);
-            } else if (request === "stop_scan") {
+                    console.log("ieToInteract at the end of selected_notice", ieToInteract);
+
+                    if (ieToInteract.length > 0) {
+                        await clearCookies();
+                        const tabs = await browser.tabs.query({active: true});
+                        const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "reload"});
+                        if (response?.msg !== "ok") throw new Error("Reload command not responded succesfully");
+                    }
+                })();
+            } else if (msg === "interactor_mounted") {
+                console.log("received msg interactor_mounted");
+                sendResponse({msg: "ok"});
+                (async () => {
+                    // 3. send command to click on notice button and interact with the page
+                    let interaction = await storage.getItem("local:interaction");
+                    console.log("the interaction in storage is: ", interaction);
+                    if (interaction?.task == null && interaction?.ie == null && interaction?.state === INTERACTION_STATE.NOT_STARTED) {
+                        let scan = await storage.getItem("local:scan");
+                        if (scan?.ieToInteract.length > 0) {
+                            console.log("NOT_STARTED, but interactions left in ieToInteract");
+                            let iElement = scan["ieToInteract"].pop();
+                            interaction.task = "click_and_interact";
+                            interaction.ie = iElement;
+                            interaction.state = INTERACTION_STATE.SENT_RELOAD;
+                            await storage.setItem("local:scan", scan);
+                            await storage.setItem("local:interaction", interaction);
+
+                            await clearCookies();
+                            const tabs = await browser.tabs.query({active: true});
+                            const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "reload"});
+                            if (response?.msg !== "ok") throw new Error("Reload command not responded succesfully");
+                        } else if (scan.stage2 === STAGE2.NOTICE_INTERACTION) {
+                            console.log("finished interaction with cookie notice, now interacting with page alone and checking if AA cookies are set");
+
+                            interaction.task = "click_and_interact";
+                            interaction.ie = null;
+                            interaction.state = INTERACTION_STATE.WO_NOTICE_SENT_RELOAD;
+
+                            scan.stage2 = STAGE2.INTERACTION_WO_NOTICE;
+                            await Promise.all([await storage.setItem("local:interaction", interaction),await storage.setItem("local:scan", scan)]);
+                            const tabs = await browser.tabs.query({active: true});
+
+                            // analyzing cookies without interaction
+                            await clearCookies();
+                            await browser.tabs.update(tabs[0].id, {url: scan["url"]});
+                        }
+                    } else if (interaction?.task != null && interaction.ie?.selector?.length > 0 && interaction.state === INTERACTION_STATE.SENT_RELOAD) {
+                        const tabs = await browser.tabs.query({active: true});
+                        interaction.state = INTERACTION_STATE.SENT_INTERACT;
+                        await storage.setItem("local:interaction", interaction);
+                        console.log("setting sent_interact, with interaction");
+                        let response = await browser.tabs.sendMessage(tabs[0].id, {
+                            msg: interaction.task, data: {selector: interaction.ie.selector}
+                        });
+                        if (response?.msg !== "ok") throw new Error(`Interactor seems to have failed in interaction. ${response?.msg}`);
+                    } else if (interaction?.task && interaction.ie?.selector.length > 0 && interaction.state === INTERACTION_STATE.SENT_INTERACT) {
+                        /**
+                         * @type {CookieCollection}
+                         */
+                        const cookiesAfterInteraction = await storage.getItem("local:cookies");
+                        if (interaction?.ie?.label === Purpose.Reject || interaction?.ie?.label === Purpose.SaveSettings || interaction?.ie?.label === Purpose.Close) {
+                            let aaCookies = []
+                            // if rejection, there should be no AA cookies
+                            for (const cookie in cookiesAfterInteraction) {
+                                if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
+                            }
+                            console.log("aaCookies.length", aaCookies.length);
+                            if (aaCookies.length > 0) { // AA cookies after reject
+                                const entry = {
+                                    ie: interaction.ie, aaCookies: aaCookies
+                                }
+                                let scan = await storage.getItem("local:scan");
+                                if (interaction.ie.label === Purpose.Reject) {
+                                    scan.aaCookiesAfterReject.push(entry);
+                                } else if (interaction.ie.label === Purpose.SaveSettings) {
+                                    scan.aaCookiesAfterSave.push(entry);
+                                } else if (interaction.ie.label === Purpose.Close) {
+                                    scan.aaCookiesAfterClose.push(entry);
+                                }
+                                await storage.setItem("local:scan", scan);
+                            }
+                        }
+                        interaction = INITIAL_INTERACTION;
+                        await storage.setItem("local:interaction", interaction);
+                        const [tabs, scan] = await Promise.all([await browser.tabs.query({active: true}), await storage.getItem("local:scan")]);
+                        await browser.tabs.update(tabs[0].id, {url: scan["url"]});
+                    } else if (interaction?.task && interaction?.ie == null && interaction?.state === INTERACTION_STATE.WO_NOTICE_SENT_RELOAD) {
+                        // interaction with page but not with cookie notice (which may or may not exist)
+                        interaction.state = INTERACTION_STATE.WO_NOTICE_SENT_INTERACT;
+                        await storage.setItem("local:interaction", interaction);
+                        console.log("sending wo_notice_sent_interact");
+                        const tabs = await browser.tabs.query({active: true});
+                        let response = await browser.tabs.sendMessage(tabs[0].id, {
+                            msg: interaction.task, data: {selector: []}
+                        });
+                    } else if (interaction?.task && interaction.state === INTERACTION_STATE.WO_NOTICE_SENT_INTERACT) {
+                        await delay(1000);
+                        /**
+                         * @type {CookieCollection}
+                         */
+                        const cookiesAfterInteraction = await storage.getItem("local:cookies");
+                        let aaCookies = []
+                        // if rejection, there should be no AA cookies
+                        for (const cookie in cookiesAfterInteraction) {
+                            if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
+                        }
+                        console.log("WO_NOTICE_SENT_INTERACT aaCookies.length ", aaCookies.length);
+                        if (aaCookies.length > 0) { // AA cookies after reject
+                            let scan = await storage.getItem("local:scan");
+                            scan.aaCookiesWONoticeInteraction = aaCookies;
+                            await storage.setItem("local:scan", scan);
+                        }
+                    }
+                })();
+            } else if (msg === "no_notice") {
+                sendResponse({msg: "ok"});
+                // TODO finish this and make it jump to the same handler that interacts with the page (without cookie notice) after cookie notice interaction
+                (async () => {
+                    const tabs = await browser.tabs.query({active: true});
+                    const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "cancel_select"});
+                    if (response?.msg !== "ok") throw new Error("cancel_select not confirmed");
+                    let scan = await storage.getItem('local:scan');
+                    scan.stage2 = STAGE2.INTERACTION_WO_NOTICE;
+                    await storage.setItem('local:scan', scan);
+                })();
+            } else if (msg === "cancel_scan") {
+                sendResponse({msg: "ok"});
+                (async () => {
+                    await resetStorage();
+                    await clearCookies();
+                    const tabs = await browser.tabs.query({active: true});
+                    const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "reload"});
+                    if (response?.msg !== "ok") throw new Error("Reload command not confirmed by interactor.");
+                })();
+            } else if (msg === "stop_scan") {
                 if (browser.cookies.onChanged.hasListener(cookieListener)) {
                     browser.cookies.onChanged.removeListener(cookieListener);
-                    sendResponse("removed listener");
+                    sendResponse({msg: "removed_listener"});
                 } else {
-                    sendResponse("no listener attached");
+                    sendResponse({msg: "no_listener_attached"});
                 }
-            } else if (request === "analyze_cookies") {
-                getCookiesFromStorage().then((cookies) => {
-                    if (!cookies) {
-                        sendResponse("no cookies to analyze");
-                        return true;
-                    }
-                    for (let c of Object.keys(cookies)) {
-                        analyzeCookie(cookies[c]);
-                    }
-                    sendResponse("analyzed");
-                });
-            } else if (request === "total_cookies") {
-                getCookiesFromStorage().then((cookies) => {
-                    sendResponse(Object.keys(cookies).length);
-                })
-            } else if (request === "store_log") {
-                storeLog();
             }
-            return true; // Need this to avoid 'message port closed' error
         });
 
         /**
@@ -201,14 +354,7 @@ export default defineBackground({
         };
 
         async function resetStorage() {
-            await storage.setItem('local:selection', {});
-            await storage.setItem('local:scan', {});
-            await storage.setItem('local:cookies', {});
-        }
-
-        function getPrediction(modelRes) {
-            const {data} = modelRes.logits;
-            return data.reduce((maxIdx, curValue, curIdx, arr) => (curValue > arr[maxIdx] ? curIdx : maxIdx), 0);
+            await Promise.all([await storage.setItem("local:selection", INITIAL_SELECTION), await storage.setItem("local:interaction", INITIAL_INTERACTION), await storage.setItem("local:scan", INITIAL_SCAN), await storage.setItem("local:cookies", [])]);
         }
 
         /**
@@ -217,11 +363,20 @@ export default defineBackground({
          * @return {number} Integer that corresponds to a value in the Purpose object
          */
         function getIELabel(modelRes) {
-            console.log("modelRes", modelRes);
-            const {data} = modelRes.logits;
-            console.log("data", data);
-            const maxIndex = data.reduce((maxIdx, curValue, curIdx, arr) => (curValue > arr[maxIdx] ? curIdx : maxIdx), 0);
-            if (maxIndex === 0) return Purpose.Accept; else if (maxIndex === 1) return Purpose.Close; else if (maxIndex === 2) return Purpose.Settings; else if (maxIndex === 3) return Purpose.Other; else if (maxIndex === 4) return Purpose.Reject; else if (maxIndex === 5) return Purpose.SaveSettings; else throw new Error('Impossible maxIndex');
+            let label = modelRes.label;
+            if (label === "LABEL_0") {
+                return Purpose.Accept;
+            } else if (label === "LABEL_1") {
+                return Purpose.Close;
+            } else if (label === "LABEL_2") {
+                return Purpose.Settings;
+            } else if (label === "LABEL_3") {
+                return Purpose.Other;
+            } else if (label === "LABEL_4") {
+                return Purpose.Reject;
+            } else if (label === "LABEL_5") {
+                return Purpose.SaveSettings;
+            } else throw new Error('Impossible maxIndex');
         }
 
         /**
@@ -315,7 +470,6 @@ export default defineBackground({
 
             browser.cookies.getAll({}).then((all_cookies) => {
                 let count = all_cookies.length;
-                console.log(`${count} cookies to remove from chrome`);
                 for (let i = 0; i < count; i++) {
                     removeCookie(all_cookies[i]);
                 }
@@ -323,7 +477,6 @@ export default defineBackground({
 
             //await storageMutex.write({"cookies": {}});
             await storage.setItem("local:cookies", {});
-            console.log("cleared cookies");
             //setCookies("local:cookies", {});
         };
 
@@ -358,146 +511,16 @@ export default defineBackground({
 
         /**
          * Using the cookie input, extract features from the cookie and classifySentencePurpose it, retrieving a label.
+         * @param {Object} newCookie
          * @param  {Object} feature_input   Transformed cookie data input, for the feature extraction.
          * @return {Promise<Number>}        Cookie category label as an integer, ranging from [0,3].
          */
-        const classifyCookie = async function (_, feature_input) {
+        const classifyCookie = async function (newCookie, feature_input) {
             // Feature extraction timing
             let features = extractFeatures(feature_input);
             // 3 from cblk_pscale default
             return await predictClass(features, 3);
         };
-
-        /**
-         * This function sets up all the analysis after it received a new cookie.
-         * Right now we assume (due to removal of all cookies prior to a scan) that every cookie arrives here
-         * AFTER a scan is started.
-         * @param cookie  Serialized cookie
-         */
-        async function analyzeCookie(cookie) {
-            storage.getItem("local:scan").then((scan) => {
-                if (!scan || scan.stage === SCANSTAGE[0] || scan.stage === SCANSTAGE[3]) {
-                    return;
-                }
-
-                // getCMP
-                const cmp = analyzeCMP(cookie);
-                // if (cmp && (!res.scan.cmp || !res.scan.cmp.choices)) {
-                if (cmp && (!scan.cmp || cmp.choices)) {
-                    scan.cmp = cmp;
-                }
-
-                // getWarnings
-                if (scan.stage === SCANSTAGE[1]) {
-                    if (cookie.current_label > 0 && !scan.nonnecessary.some((c) => c.name === cookie.name)) {
-                        scan.nonnecessary.push(cookie);
-                    }
-                }
-
-                if (scan.stage === SCANSTAGE[2]) {
-                    if (!scan.consentNotice) {
-                        storage.setItem("local:scan", scan);
-                        return;
-                    }
-
-                    const cookieCategories = findCookieCategories(cookie.name, scan.consentNotice);
-
-                    if (cookieCategories.length === 0 && !scan.undeclared.some((c) => c.name === cookie.name)) {
-                        scan.undeclared.push(cookie);
-                    } else if (cookieCategories.length > 1 && !scan.multideclared.some((c) => c.name === cookie.name)) {
-                        scan.multideclared.push(cookie);
-                    } else if (cookieCategories.length === 1) {
-                        // cookie is present in exactly one category of the consent notice
-                        const cat = cookieCategories[0];
-                        if (classStringToIndex(cat) < cookie.current_label && !scan.wrongcat.some((c) => c.cookie.name === cookie.name)) {
-                            scan.wrongcat.push({"cookie": cookie, "consent_label": cat});
-                        }
-
-                        // check expiry
-                        if (!scan.consentNotice[cat]) {
-                            storage.setItem("local:scan", scan);
-                            return;
-                        }
-                        const declaration = scan.consentNotice[cat].find((c) => cookie.name.startsWith(c.name.replace(/x+$/, "")))
-                        if (!declaration || NOCHECK_EXPIRY.includes(declaration.name) || scan.wrongexpiry.some((c) => c.cookie.name === cookie.name)) {
-                            storage.setItem("local:scan", scan);
-                            return;
-                        }
-
-                        if (declaration.session) {
-                            if (!cookie.variable_data[cookie.variable_data.length - 1].session) {
-                                scan.wrongexpiry.push({"cookie": cookie, "consent_expiry": "session"});
-                                storage.setItem("local:scan", scan);
-                                return;
-                            }
-                        }
-
-                        if (cookie.variable_data[cookie.variable_data.length - 1].session) {
-                            scan.wrongexpiry.push({"cookie": cookie, "consent_expiry": "nosession"});
-                            storage.setItem("local:scan", scan);
-                            return;
-                        }
-
-                        if (Number(cookie.variable_data[cookie.variable_data.length - 1].expiry) > 1.5 * declaration.expiry) {
-                            scan.wrongexpiry.push({"cookie": cookie, "consent_expiry": declaration.expiry});
-                        }
-                    }
-                }
-
-                storage.setItem("local:scan", scan);
-            });
-        }
-
-        /**
-         * Find all categories of the consent notice where a cookie is present
-         * @param cookieName
-         * @param consentNotice
-         * @returns {[]} Array with all category strings
-         */
-        const findCookieCategories = function (cookieName, consentNotice) {
-            let categories = [];
-            for (let cat of Object.keys(consentNotice)) {
-                if (consentNotice[cat].find((c) => cookieName.startsWith(c.name.replace(/x+$/, "")))) {
-                    categories.push(cat);
-                }
-            }
-            return categories;
-        }
-
-        /**
-         * Store the scan in the database
-         */
-        const storeLog = function () {
-            console.log("Storing Log into Database...");
-
-            if (!db) {
-                console.log("Database connection info missing!");
-                return;
-            }
-
-            storage.getItem("local:scan").then((scan) => {
-                if (!scan) {
-                    console.log("No scan to export to database");
-                    return;
-                }
-
-                const data = {
-                    "dataSource": db.dataSource, "database": db.database, "collection": db.collection, "document": scan
-                }
-
-                // request options
-                const options = {
-                    method: 'POST', body: JSON.stringify(data), headers: {
-                        'Content-Type': 'application/json', 'Access-Control-Request-Headers': '*', 'api-key': db.apiKey
-                    }
-                }
-
-                // send POST request
-                fetch(db.url, options)
-                    .then(scan => scan.json())
-                    .then(res => console.log(res));
-            });
-        }
 
         /**
          * Retrieve the cookie and classifySentencePurpose it.
@@ -546,10 +569,7 @@ export default defineBackground({
             const inserted = await insertCookieIntoStorage(serializedCookie);
             if (!inserted) {
                 console.error("couldn't insert cookie");
-                return;
             }
-
-            await analyzeCookie(serializedCookie);
         }
 
         /**
@@ -564,7 +584,17 @@ export default defineBackground({
 
         async function translateToEnglish(text) {
             let response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&dt=bd&dj=1&q=${encodeURIComponent(text)}`);
-            let body = await response.json();
+            /**
+             * @typedef {Object} Sentence
+             * @property {string} trans - The translated text.
+             */
+            /**
+             * @typedef {Object} TranslationResponse
+             * @property {Sentence[]} sentences - The sentences in the translation response.
+             * @property {string} src - The source language detected.
+             */
+            /** @type {TranslationResponse} */
+            const body = await response.json();
             const result = {
                 resultText: "", sourceLanguage: "", percentage: 0, isError: false, errorMessage: ""
             };
