@@ -6,13 +6,21 @@ import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
 import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
-import {STAGE2, urlToUniformDomain} from '../modules/globals.js';
+import {STAGE2, urlToUniformDomain, getFullIframeIndex} from '../modules/globals.js';
 //import {getSingleSelector} from './optimal_select.js';
 import getSingleSelector from './optimal-select2/select.js';
 
 export default () => {
     const [isSurfing, _setIsSurfing] = useState(false);
     const isSurfingRef = useRef(isSurfing);
+
+    // refs to handle if click/mousedown/mouseup was handled.
+    // reason: some websites capture and stop propagation of click events (but e.g. not mousedown)
+    // thus we try to react on any of the three events, in case some are not propagated through the DOM
+    const selectParentHandled = useRef(false);
+    const selectChildHandled = useRef(false);
+    const cancelHandled = useRef(false);
+    const confirmHandled = useRef(false);
 
     function setIsSurfing(isSurfing) {
         isSurfingRef.current = isSurfing;
@@ -97,6 +105,7 @@ export default () => {
         setIsSurfing(false);
         isInactive.current = true;
         interactiveElements.current = [];
+        window.removeEventListener('mousedown', handleMousedown);
     }
 
     function totalWidth(rect) {
@@ -157,11 +166,7 @@ export default () => {
      * @param {MouseEvent} e
      */
     function handleMousedown(e) {
-        if (selectedDOMElementRef.current) {
-            return;
-        }
-        if (isInactive.current) {
-            console.error('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
+        if (selectedDOMElementRef.current || isInactive.current) {
             return;
         }
         let selected = document.elementFromPoint(e.clientX, e.clientY);
@@ -183,11 +188,11 @@ export default () => {
      * Sensible means skipping parents with no area and skipping parents if multiple parents have the same dimensions.
      */
     function handleSelectParent() {
-        console.log("handleSelectParent");
+        if (selectParentHandled.current) return;
+        selectParentHandled.current = true;
+
         let startParent = skipZeroAreaNodes(selectedDOMElementRef.current.parentElement);
-        console.log("startParent", startParent);
         let selected = climbUpEquivalenceTree(startParent);
-        console.log("selected", selected);
         if (selected) {
             setElementHistory([...elementHistoryRef.current, selectedDOMElementRef.current]);
             //reset();
@@ -196,27 +201,44 @@ export default () => {
             //setStyle(selected);
             //setPosition();
         }
+        setTimeout(() => {
+            selectParentHandled.current = false;
+        }, 500);
     }
 
     /**
      * Pops the most recent element off the element history "stack"
      */
     function handleSelectChild() {
+        if (selectChildHandled.current) return;
+        selectChildHandled.current = true;
+
         //if (!wrap.classList.contains('selected')) return;
         if (!selectedDOMElementRef.current || elementHistoryRef.current.length === 0) return;
 
         setSelectedDOMElement(elementHistoryRef.current[elementHistoryRef.current.length - 1]); // set to last element in history
         setElementHistory([...elementHistoryRef.current.slice(0, -1)]); // remove last element
+
+        setTimeout(() => {
+            selectChildHandled.current = false;
+        }, 500);
     }
 
     /**
      * When user clicks cancel button inside selector context menu, we update the stage2 to not started and call reset()
      */
     async function handleCancelBtn() {
+        if (cancelHandled.current) return;
+        cancelHandled.current = true;
+
         let scan = storage.getItem('local:scan');
         scan.stage2 = STAGE2.NOT_STARTED;
         await storage.setItem('local:scan', scan);
         reset();
+
+        setTimeout(() => {
+            cancelHandled.current = false;
+        }, 500);
     }
 
     /**
@@ -230,17 +252,12 @@ export default () => {
      * @param sendResponse
      */
     function handleSelectorMessage(message, sender, sendResponse) {
-        const { msg } = message;
+        const {msg} = message;
         if (msg === "start_select") {
             sendResponse({msg: "ok"});
             setIsSurfing(true);
-            if (!isInactive.current && !selectedDOMElementRef.current) {
-                console.error('Error: Another instance of \'DomSelector\' is already running. Finish it before starting another one.');
-            } else {
-                if (selectedDOMElementRef.current) reset();
-                isInactive.current = false;
-                window.addEventListener('mousedown', handleMousedown, {once: true});
-            }
+            isInactive.current = false;
+            window.addEventListener('mousedown', handleMousedown, {once: true});
         } else if (msg === "cancel_select") {
             sendResponse({msg: "ok"})
             reset();
@@ -352,6 +369,9 @@ export default () => {
     }
 
     async function handleConfirm() {
+        if (confirmHandled.current) return;
+        confirmHandled.current = true;
+
         notifications.show({
             title: 'Confirmed', message: 'Cookie banner was selected'
         });
@@ -371,10 +391,14 @@ export default () => {
 
         let selection = {
             notice: {selector: getSingleSelector(selected), text: noticeText, label: null},
-            interactiveObjects: interactiveObjects
+            interactiveObjects: interactiveObjects,
+            iframeFullIndex: getFullIframeIndex(window)
         };
-        console.log("selection as created in App.jsx", selection);
-        await Promise.all([storage.setItem('local:selection', selection), storage.setMeta('local:selection', {url: urlToUniformDomain(window.location.href)})]);
+        setTimeout(() => {
+            confirmHandled.current = false;
+        }, 500);
+
+        await Promise.all([storage.setItem('local:selection', selection)]);
         await browser.runtime.sendMessage({msg: "selected_notice"});
     }
 
@@ -389,13 +413,19 @@ export default () => {
     }
 
     useEffect(() => {
-        console.log("mounted the selector");
         browser.runtime.onMessage.addListener(handleSelectorMessage);
+
         //window.addEventListener('mouseover', handleMouseover);
         //window.addEventListener('mouseout', handleMouseout);
         window.addEventListener('mousemove', mapE);
         window.addEventListener('scroll', handleScroll);
         window.addEventListener('keydown', handleKeydown);
+
+        const unwatchSelection = storage.watch('local:selection', (newSelection, _) => {
+            if (newSelection.notice !== null) {
+                reset();
+            }
+        });
 
         return () => {
             browser.runtime.onMessage.removeListener(handleSelectorMessage);
@@ -405,6 +435,7 @@ export default () => {
             window.removeEventListener('scroll', handleScroll);
             window.removeEventListener('mousedown', handleMousedown);
             window.addEventListener('keydown', handleKeydown);
+            unwatchSelection();
         }
     }, [])
 
@@ -422,18 +453,18 @@ export default () => {
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button variant="default" size="xs" leftSection={<IconArrowUp size={14}/>}
                                 disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
-                                className={'dom-selector-parent'} onClick={handleSelectParent}>Outer</Button>
+                                className={'dom-selector-parent'} onClick={handleSelectParent} onMouseDown={handleSelectParent} onMouseUp={handleSelectParent}>Outer</Button>
                         <Button variant="default" size="xs" leftSection={<IconArrowDown size={14}/>}
                                 disabled={elementHistory.length === 0}
-                                className={'dom-selector-parent'} onClick={handleSelectChild}>Inner</Button>
+                                className={'dom-selector-parent'} onClick={handleSelectChild} onMouseDown={handleSelectChild} onMouseUp={handleSelectChild}>Inner</Button>
                     </Group>
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button size="xs" variant="light" color="red" leftSection={<IconX size={14}/>}
-                                className={`dom-selector-closer`} onClick={handleCancelBtn}>Cancel</Button>
+                                className={`dom-selector-closer`} onClick={handleCancelBtn} onMouseDown={handleCancelBtn} onMouseUp={handleCancelBtn}>Cancel</Button>
                     </Group>
                     <Group justify="center" grow>
                         <Button size="xs" variant="light" color="green"
-                                leftSection={<IconCheck size={14}/>} onClick={handleConfirm}>Confirm</Button>
+                                leftSection={<IconCheck size={14}/>} onClick={handleConfirm} onMouseDown={handleConfirm} onMouseUp={handleConfirm}>Confirm</Button>
                     </Group>
                 </dom-selector-data>
             </dom-selector>

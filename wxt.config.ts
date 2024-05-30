@@ -9,11 +9,11 @@ export default defineConfig({
         plugins: [react()]
     }),
     manifest: {
-        permissions: ["cookies", "activeTab", "storage", "unlimitedStorage", "tabs", "scripting"],
+        permissions: ["cookies", "activeTab", "storage", "unlimitedStorage", "tabs", "scripting", "webNavigation"],
         web_accessible_resources: [
             {
                 matches: ["<all_urls>"],
-                resources: ['ext_data/*'],
+                resources: ['ext_data/*', 'noticeInteractor.js', 'noticeInteractor2.js', 'reportCreator.js'],
             }
         ],
         content_security_policy: {

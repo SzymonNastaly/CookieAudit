@@ -73,14 +73,18 @@ export default function App() {
         window.close();
     }
 
-    function noNotice() {
-        const {msg} = browser.runtime.sendMessage({msg: "no_notice"});
+    async function noNotice() {
+        const {msg} = await browser.runtime.sendMessage({msg: "no_notice"});
         if (msg !== "ok") throw new Error("no_notice was not confirmed by background.js");
     }
 
-    function cancelScan() {
-        const {msg} = browser.runtime.sendMessage({msg: "cancel_scan"});
-        if (msg !== "ok") throw new Error("cancel_scan was not confirmed by background.js");
+    async function cancelScan() {
+        const response = await browser.runtime.sendMessage({msg: "cancel_scan"});
+        console.log("response after cancel_scan", response);
+        if (response.msg !== "ok") throw new Error("cancel_scan was not confirmed by background.js");
+
+        // close popup
+        window.close();
     }
 
     function warnings(s) {

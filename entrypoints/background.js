@@ -1,16 +1,16 @@
 import {
     classIndexToString,
     datetimeToExpiry,
+    delay,
     escapeString,
-    SCANSTAGE,
-    STAGE2,
-    INITIAL_SELECTION,
-    INITIAL_SCAN,
     INITIAL_INTERACTION,
+    INITIAL_SCAN,
+    INITIAL_SELECTION,
     INTERACTION_STATE,
     isAALabel,
-    urlToUniformDomain,
-    delay
+    PAGE_COUNT,
+    STAGE2,
+    urlToUniformDomain
 } from "./modules/globals.js";
 import {extractFeatures} from "./modules/extractor.js";
 import {predictClass} from "./modules/predictor.js";
@@ -33,8 +33,6 @@ import {env, pipeline} from '@xenova/transformers';
 // noinspection JSUnusedGlobalSymbols
 export default defineBackground({
     type: 'module', main() {
-        browser.cookies.onChanged.addListener(cookieListener);
-
         const UPDATE_LIMIT = 10;
         const MINTIME = 120000;
 
@@ -79,26 +77,80 @@ export default defineBackground({
             Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5
         });
 
+        async function interactWithPage(tabs) {
+            for (let i = 0; i < PAGE_COUNT; i++) {
+                let pageRet = await browser.scripting.executeScript({
+                    target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true
+                });
+                let nextUrl = pageRet[0].result;
+                if (nextUrl != null) {
+                    await browser.tabs.update(tabs[0].id, {url: nextUrl});
+                    await delay(4000);
+                }
+            }
+        }
+
+        /**
+         * If there are further interactive elements, we start the interaction for the next one.
+         * Otherwise, we finish the interaction with the case of ignoring the cookie notice.
+         * @param interactionState
+         * @return {Promise<void>}
+         */
+
+        async function storeCookieResults(interactionState) {
+            /**
+             * @type {CookieCollection}
+             */
+            const cookiesAfterInteraction = await storage.getItem("local:cookies");
+            let aaCookies = []
+            // if rejection, there should be no AA cookies
+            for (const cookieKey in cookiesAfterInteraction) {
+                let cookie = cookiesAfterInteraction[cookieKey];
+                if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
+            }
+            console.log("aaCookies in storeCookieResult", aaCookies);
+            let scan = await storage.getItem("local:scan");
+            const interaction = await storage.getItem("local:interaction");
+
+            if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
+                // analyze cookies after interaction with both notice and page
+
+                if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
+                    if (aaCookies.length > 0) {
+                        const entry = {
+                            ie: interaction.ie, aaCookies: aaCookies
+                        }
+                        if (interaction.ie.label === Purpose.Reject) {
+                            scan.aaCookiesAfterReject.push(entry);
+                        } else if (interaction.ie.label === Purpose.SaveSettings) {
+                            scan.aaCookiesAfterSave.push(entry);
+                        } else if (interaction.ie.label === Purpose.Close) {
+                            scan.aaCookiesAfterClose.push(entry);
+                        }
+
+                    }
+                }
+            } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
+                // analyze cookies after interaction with only page and ignoring notice
+                if (aaCookies.length > 0) { // AA cookies after reject
+                    scan.aaCookiesWONoticeInteraction = aaCookies;
+                }
+            }
+            await storage.setItem("local:scan", scan);
+        }
+
         /**
          * Handlers for all messages sent to the background script.
          */
         browser.runtime.onMessage.addListener(function (message, _, sendResponse) {
             let {msg} = message;
-            if (msg === "get_cookies") {
-                (async () => {
-                    const cookies = await getCookiesFromStorage();
-                    sendResponse({msg: "ok", data: cookies});
-                })();
-                return true; // return is necessary for async response
-            } else if (msg === "clear_cookies") {
-                (async () => {
-                    await clearCookies();
-                    sendResponse({msg: "ok"});
-                })();
-                return true;
-            } else if (msg === "start_scan") {
+            if (msg === "start_scan") {
                 sendResponse({msg: "ok"});
                 (async () => {
+                    if (!browser.cookies.onChanged.hasListener(cookieListener)) {
+                        browser.cookies.onChanged.addListener(cookieListener);
+                    }
+
                     await resetStorage();
                     await clearCookies();
                     let scan = await storage.getItem('local:scan');
@@ -136,7 +188,6 @@ export default defineBackground({
                     // Due to a bug in onnxruntime-web, we must disable multithreading for now.
                     // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
                     env.backends.onnx.wasm.numThreads = 1;
-
                     let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
                     if (purposeClassifier == null) throw new Error("Purpose Classifier is null");
                     const purposeClassifications = (await purposeClassifier(sentences)).map(res => {
@@ -147,7 +198,6 @@ export default defineBackground({
                     scan = await storage.getItem("local:scan");
                     scan["purposeDeclared"] = (selection.notice.label > 0);
                     await storage.setItem("local:scan", scan);
-
 
                     let ieClassifier = await IEPipelineSingleton.getInstance(USE_QUANTIZED);
                     if (ieClassifier == null) throw new Error("IE Classifier was null");
@@ -182,11 +232,11 @@ export default defineBackground({
                     }
 
                     scan = await storage.getItem("local:scan");
-                    scan["stage"] = SCANSTAGE[1];
                     scan["stage2"] = STAGE2.NOTICE_INTERACTION;
                     scan["interactiveElements"] = interactiveElements;
                     scan["rejectDetected"] = (interactiveElements[Purpose.Reject].length > 0);
                     scan["closeSaveDetected"] = (interactiveElements[Purpose.Close].length > 0) || (interactiveElements[Purpose.SaveSettings].length > 0);
+
                     let ieToInteract = [];
                     for (const iElement of interactiveElements[Purpose.Reject]) {
                         ieToInteract.push(iElement);
@@ -197,122 +247,60 @@ export default defineBackground({
                     for (const iElement of interactiveElements[Purpose.SaveSettings]) {
                         ieToInteract.push(iElement);
                     }
-                    scan["ieToInteract"] = ieToInteract;
+
+                    for (const iElement of interactiveElements[Purpose.Accept]) {
+                        ieToInteract.push(iElement);
+                    }
+                    scan.ieToInteract = ieToInteract;
+                    console.log("ieToInteract", ieToInteract);
                     await storage.setItem("local:scan", scan);
 
-                    console.log("ieToInteract at the end of selected_notice", ieToInteract);
+                    const tabs = await browser.tabs.query({active: true});
 
-                    if (ieToInteract.length > 0) {
+                    // iterate over interactive elements
+                    for (let i = 0; i < scan.ieToInteract.length; i++) {
+                        let interaction = await storage.getItem("local:interaction");
+                        interaction.ie = scan.ieToInteract[i];
+                        await storage.setItem("local:interaction", interaction);
+
+                        await browser.scripting.executeScript({
+                            target: {tabId: tabs[0].id, allFrames: true},
+                            files: ['noticeInteractor.js'],
+                            injectImmediately: true
+                        })
+                        await delay(2000);
+
+                        await interactWithPage(tabs);
+                        await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
+
+                        scan = await storage.getItem("local:scan");
+                        console.log("scan", scan);
+
+                        interaction = await storage.getItem("local:interaction");
+                        interaction.visitedPages = [];
+                        await storage.setItem("local:interaction", interaction);
+
+                        let cookies = await storage.getItem("local:cookies");
+                        console.log("cookies", cookies);
+
+                        // reset cookies and reload page
                         await clearCookies();
-                        const tabs = await browser.tabs.query({active: true});
-                        const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "reload"});
-                        if (response?.msg !== "ok") throw new Error("Reload command not responded succesfully");
+                        await browser.tabs.update(tabs[0].id, {url: scan.url});
+
+                        await delay(4000);
                     }
-                })();
-            } else if (msg === "interactor_mounted") {
-                console.log("received msg interactor_mounted");
-                sendResponse({msg: "ok"});
-                (async () => {
-                    // 3. send command to click on notice button and interact with the page
-                    let interaction = await storage.getItem("local:interaction");
-                    console.log("the interaction in storage is: ", interaction);
-                    if (interaction?.task == null && interaction?.ie == null && interaction?.state === INTERACTION_STATE.NOT_STARTED) {
-                        let scan = await storage.getItem("local:scan");
-                        if (scan?.ieToInteract.length > 0) {
-                            console.log("NOT_STARTED, but interactions left in ieToInteract");
-                            let iElement = scan["ieToInteract"].pop();
-                            interaction.task = "click_and_interact";
-                            interaction.ie = iElement;
-                            interaction.state = INTERACTION_STATE.SENT_RELOAD;
-                            await storage.setItem("local:scan", scan);
-                            await storage.setItem("local:interaction", interaction);
 
-                            await clearCookies();
-                            const tabs = await browser.tabs.query({active: true});
-                            const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "reload"});
-                            if (response?.msg !== "ok") throw new Error("Reload command not responded succesfully");
-                        } else if (scan.stage2 === STAGE2.NOTICE_INTERACTION) {
-                            console.log("finished interaction with cookie notice, now interacting with page alone and checking if AA cookies are set");
+                    // interact with page, while ignoring cookie banner
+                    await interactWithPage(tabs);
+                    await delay(2000);
+                    await storeCookieResults(INTERACTION_STATE.PAGE_WO_NOTICE);
+                    await delay(2000);
 
-                            interaction.task = "click_and_interact";
-                            interaction.ie = null;
-                            interaction.state = INTERACTION_STATE.WO_NOTICE_SENT_RELOAD;
-
-                            scan.stage2 = STAGE2.INTERACTION_WO_NOTICE;
-                            await Promise.all([await storage.setItem("local:interaction", interaction),await storage.setItem("local:scan", scan)]);
-                            const tabs = await browser.tabs.query({active: true});
-
-                            // analyzing cookies without interaction
-                            await clearCookies();
-                            await browser.tabs.update(tabs[0].id, {url: scan["url"]});
-                        }
-                    } else if (interaction?.task != null && interaction.ie?.selector?.length > 0 && interaction.state === INTERACTION_STATE.SENT_RELOAD) {
-                        const tabs = await browser.tabs.query({active: true});
-                        interaction.state = INTERACTION_STATE.SENT_INTERACT;
-                        await storage.setItem("local:interaction", interaction);
-                        console.log("setting sent_interact, with interaction");
-                        let response = await browser.tabs.sendMessage(tabs[0].id, {
-                            msg: interaction.task, data: {selector: interaction.ie.selector}
-                        });
-                        if (response?.msg !== "ok") throw new Error(`Interactor seems to have failed in interaction. ${response?.msg}`);
-                    } else if (interaction?.task && interaction.ie?.selector.length > 0 && interaction.state === INTERACTION_STATE.SENT_INTERACT) {
-                        /**
-                         * @type {CookieCollection}
-                         */
-                        const cookiesAfterInteraction = await storage.getItem("local:cookies");
-                        if (interaction?.ie?.label === Purpose.Reject || interaction?.ie?.label === Purpose.SaveSettings || interaction?.ie?.label === Purpose.Close) {
-                            let aaCookies = []
-                            // if rejection, there should be no AA cookies
-                            for (const cookie in cookiesAfterInteraction) {
-                                if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
-                            }
-                            console.log("aaCookies.length", aaCookies.length);
-                            if (aaCookies.length > 0) { // AA cookies after reject
-                                const entry = {
-                                    ie: interaction.ie, aaCookies: aaCookies
-                                }
-                                let scan = await storage.getItem("local:scan");
-                                if (interaction.ie.label === Purpose.Reject) {
-                                    scan.aaCookiesAfterReject.push(entry);
-                                } else if (interaction.ie.label === Purpose.SaveSettings) {
-                                    scan.aaCookiesAfterSave.push(entry);
-                                } else if (interaction.ie.label === Purpose.Close) {
-                                    scan.aaCookiesAfterClose.push(entry);
-                                }
-                                await storage.setItem("local:scan", scan);
-                            }
-                        }
-                        interaction = INITIAL_INTERACTION;
-                        await storage.setItem("local:interaction", interaction);
-                        const [tabs, scan] = await Promise.all([await browser.tabs.query({active: true}), await storage.getItem("local:scan")]);
-                        await browser.tabs.update(tabs[0].id, {url: scan["url"]});
-                    } else if (interaction?.task && interaction?.ie == null && interaction?.state === INTERACTION_STATE.WO_NOTICE_SENT_RELOAD) {
-                        // interaction with page but not with cookie notice (which may or may not exist)
-                        interaction.state = INTERACTION_STATE.WO_NOTICE_SENT_INTERACT;
-                        await storage.setItem("local:interaction", interaction);
-                        console.log("sending wo_notice_sent_interact");
-                        const tabs = await browser.tabs.query({active: true});
-                        let response = await browser.tabs.sendMessage(tabs[0].id, {
-                            msg: interaction.task, data: {selector: []}
-                        });
-                    } else if (interaction?.task && interaction.state === INTERACTION_STATE.WO_NOTICE_SENT_INTERACT) {
-                        await delay(1000);
-                        /**
-                         * @type {CookieCollection}
-                         */
-                        const cookiesAfterInteraction = await storage.getItem("local:cookies");
-                        let aaCookies = []
-                        // if rejection, there should be no AA cookies
-                        for (const cookie in cookiesAfterInteraction) {
-                            if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
-                        }
-                        console.log("WO_NOTICE_SENT_INTERACT aaCookies.length ", aaCookies.length);
-                        if (aaCookies.length > 0) { // AA cookies after reject
-                            let scan = await storage.getItem("local:scan");
-                            scan.aaCookiesWONoticeInteraction = aaCookies;
-                            await storage.setItem("local:scan", scan);
-                        }
-                    }
+                    await browser.scripting.executeScript({
+                        target: {tabId: tabs[0].id},
+                        files: ['reportCreator.js'],
+                        injectImmediately: true
+                    })
                 })();
             } else if (msg === "no_notice") {
                 sendResponse({msg: "ok"});
@@ -328,19 +316,14 @@ export default defineBackground({
             } else if (msg === "cancel_scan") {
                 sendResponse({msg: "ok"});
                 (async () => {
+                    if (browser.cookies.onChanged.hasListener(cookieListener)) {
+                        browser.cookies.onChanged.removeListener(cookieListener);
+                    }
                     await resetStorage();
                     await clearCookies();
                     const tabs = await browser.tabs.query({active: true});
-                    const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "reload"});
-                    if (response?.msg !== "ok") throw new Error("Reload command not confirmed by interactor.");
+                    await browser.tabs.update(tabs[0].id, {url: tabs[0].url});
                 })();
-            } else if (msg === "stop_scan") {
-                if (browser.cookies.onChanged.hasListener(cookieListener)) {
-                    browser.cookies.onChanged.removeListener(cookieListener);
-                    sendResponse({msg: "removed_listener"});
-                } else {
-                    sendResponse({msg: "no_listener_attached"});
-                }
             }
         });
 
@@ -445,49 +428,44 @@ export default defineBackground({
         const insertCookieIntoStorage = async function (serializedCookie) {
             let ckey = constructKeyFromCookie(serializedCookie);
 
-            //let cookies = await storageMutex.read("local:cookies");
             let cookies = await storage.getItem("local:cookies");
-            //let cookies = getCookies("local:cookies");
             if (!cookies) {
                 cookies = {};
             }
             cookies[ckey] = serializedCookie;
-            //await storageMutex.write(cookies);
             await storage.setItem("local:cookies", cookies);
-            //setCookies("local:cookies", cookies);
             return true;
         }
 
         /**
          * Remove a cookie from the browser and from historyDB
          */
-        const clearCookies = async function () {
+        async function clearCookies() {
             // First we delete the cookies from the browser
-            let removeCookie = function (cookie) {
+            async function removeCookie(cookie) {
                 let url = "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path;
-                browser.cookies.remove({url: url, name: cookie.name});
-            };
+                await browser.cookies.remove({url: url, name: cookie.name});
+            }
 
-            browser.cookies.getAll({}).then((all_cookies) => {
-                let count = all_cookies.length;
-                for (let i = 0; i < count; i++) {
-                    removeCookie(all_cookies[i]);
-                }
+            const all_cookies = await browser.cookies.getAll({});
+            let promises = [];
+            for (let i = 0; i < all_cookies.length; i++) {
+                promises.push(removeCookie(all_cookies[i]));
+            }
+
+            const tabs = await browser.tabs.query({active: true});
+            await browser.scripting.executeScript({
+                target: {tabId: tabs[0].id, allFrames: true}, injectImmediately: true, func: (() => {
+                    window.localStorage.clear();
+                    window.sessionStorage.clear();
+                })
             });
+
+            await Promise.all(promises);
 
             //await storageMutex.write({"cookies": {}});
             await storage.setItem("local:cookies", {});
             //setCookies("local:cookies", {});
-        };
-
-        /**
-         * Retrieve all cookies from IndexedDB storage via a transaction.
-         * @returns {Promise<Object>} Array of all cookies.
-         */
-        const getCookiesFromStorage = async function () {
-            //let {cookies} = await storageMutex.read("cookies");
-            //let cookies = getCookies("local:cookies");
-            return await storage.getItem("local:cookies");
         }
 
         /**

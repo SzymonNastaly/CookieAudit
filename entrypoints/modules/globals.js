@@ -18,21 +18,20 @@ const enableExtraOptions = false;
  */
 export const SCANSTAGE = ["initial", "necessary", "all", "finished"];
 export const STAGE2 = Object.freeze({
-    NOT_STARTED: "not_started",
-    NOTICE_SELECTION: "notice_selection",
-    NOTICE_INTERACTION: "notice_interaction",
-    INTERACTION_WO_NOTICE: "interaction_without_notice",
-    FINISHED: "finished"
+    NOT_STARTED: 0,
+    NOTICE_SELECTION: 1,
+    NOTICE_INTERACTION: 2,
+    INTERACTION_WO_NOTICE: 3,
+    FINISHED: 4
 });
 
 export const INITIAL_SCAN = {
-    'stage': SCANSTAGE[0],
-    'stage2': STAGE2.NOT_STARTED,
+    stage2: STAGE2.NOT_STARTED,
     'scanStart': null,
     'scanEnd': null,
     'url': null,
     'interactiveElements': [],
-    "ieToInteract": [],
+    ieToInteract: [],
     "purposeDeclared": false,
     "noticeDetected": false,
     "rejectDetected": false,
@@ -43,21 +42,47 @@ export const INITIAL_SCAN = {
     "aaCookiesWONoticeInteraction": []
 };
 export const INTERACTION_STATE = Object.freeze({
-    NOT_STARTED: "not_started",
-    SENT_RELOAD: "sent_reload",
-    SENT_INTERACT: "sent_interact",
-    WO_NOTICE_SENT_RELOAD: "wo_notice_sent_reload",
-    WO_NOTICE_SENT_INTERACT: "wo_notice_sent_interact",
-    FINISHED: "finished"
+    PAGE_W_NOTICE: 0,
+    PAGE_WO_NOTICE: 1
 });
 
-export const INITIAL_SELECTION = {
-    notice: null, interactiveObjects: []
-};
-export const INITIAL_INTERACTION = {
-    task: null, ie: null, state: INTERACTION_STATE.NOT_STARTED
-}
+export const PAGE_COUNT = 5;
 
+export const INITIAL_SELECTION = Object.freeze({
+    notice: null, interactiveObjects: [], iframeFullIndex: null
+});
+export const INITIAL_INTERACTION = Object.freeze({
+    ie: null, visitedPages: []
+});
+
+// Function to await no changes being made to the DOM. ChatGPT
+export async function awaitNoDOMChanges(initTimeout= 4000, timeout = 1000) {
+    return new Promise((resolve) => {
+        let debounceTimer;
+        let initialTimer = setTimeout(() => {
+            // If no mutations are detected within a specific timeframe, disconnect the observer and resolve the promise
+            observer.disconnect();
+            resolve();
+        }, initTimeout); // Set this to a reasonable timeframe depending on expected changes
+
+        // Create a MutationObserver to observe the entire document
+        const observer = new MutationObserver(() => {
+            clearTimeout(debounceTimer);
+            clearTimeout(initialTimer); // Clear the initial timer as we have detected changes
+            debounceTimer = setTimeout(() => {
+                // Stop observing changes and resolve the promise
+                observer.disconnect();
+                resolve();
+            }, timeout);
+        });
+
+        // Start observing changes in the entire document
+        observer.observe(document.body, {
+            childList: true, // Observe changes to child nodes
+            subtree: true // Observe changes in all descendants
+        });
+    });
+}
 
 /**
  * These fixes are displayed on the summary according to what needs to be fixed.
@@ -74,6 +99,26 @@ export const FIXES = {
 
 export function delay(time) {
     return new Promise(resolve => setTimeout(resolve, time));
+}
+
+export function getIframeIndex(win) {
+    if (win.parent !== win) {
+        for (let i = 0; i < win.parent.frames.length; i++) {
+            if (win.parent.frames[i] === win) { return i; }
+        }
+        throw Error("In a frame, but could not find myself");
+    } else {
+        return -1;
+    }
+}
+
+// Returns a unique index in iframe hierarchy, or empty string if topmost
+export function getFullIframeIndex(win) {
+    if (getIframeIndex(win) < 0) {
+        return "root";
+    } else {
+        return getFullIframeIndex(win.parent) + "." + getIframeIndex(win);
+    }
 }
 
 /**
