@@ -1,7 +1,6 @@
 import {defineConfig} from 'wxt';
 import react from '@vitejs/plugin-react';
-import wasm from "vite-plugin-wasm";
-import topLevelAwait from "vite-plugin-top-level-await";
+
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
