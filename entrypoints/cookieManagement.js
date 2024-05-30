@@ -1,13 +1,57 @@
 import {
-    classIndexToString,
-    datetimeToExpiry,
-    escapeString, urlToUniformDomain,
+    classIndexToString, datetimeToExpiry, escapeString, urlToUniformDomain, isAALabel
 } from "./modules/globals.js";
 import {extractFeatures} from "./modules/extractor.js";
 import {predictClass} from "./modules/predictor.js";
 
 const UPDATE_LIMIT = 10;
 const MINTIME = 120000;
+
+/**
+ * After an interaction, store the intersting (analytics and advertising) in the scan results.
+ * @param interactionState
+ * @return {Promise<void>}
+ */
+export async function storeCookieResults(interactionState) {
+    /**
+     * @type {CookieCollection}
+     */
+    const cookiesAfterInteraction = await storage.getItem("local:cookies");
+    let aaCookies = []
+    // if rejection, there should be no AA cookies
+    for (const cookieKey in cookiesAfterInteraction) {
+        let cookie = cookiesAfterInteraction[cookieKey];
+        if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
+    }
+    let scan = await storage.getItem("local:scan");
+    const interaction = await storage.getItem("local:interaction");
+
+    if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
+        // analyze cookies after interaction with both notice and page
+
+        if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
+            if (aaCookies.length > 0) {
+                const entry = {
+                    ie: interaction.ie, aaCookies: aaCookies
+                }
+                if (interaction.ie.label === Purpose.Reject) {
+                    scan.aaCookiesAfterReject.push(entry);
+                } else if (interaction.ie.label === Purpose.SaveSettings) {
+                    scan.aaCookiesAfterSave.push(entry);
+                } else if (interaction.ie.label === Purpose.Close) {
+                    scan.aaCookiesAfterClose.push(entry);
+                }
+
+            }
+        }
+    } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
+        // analyze cookies after interaction with only page and ignoring notice
+        if (aaCookies.length > 0) { // AA cookies after reject
+            scan.aaCookiesWONoticeInteraction = aaCookies;
+        }
+    }
+    await storage.setItem("local:scan", scan);
+}
 
 /**
  * Construct a string formatted key that uniquely identifies the given cookie object.

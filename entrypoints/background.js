@@ -1,13 +1,9 @@
 import {
-    delay,
-    INTERACTION_STATE,
-    isAALabel,
-    PAGE_COUNT, resetStorage,
-    STAGE2
+    delay, INTERACTION_STATE, PAGE_COUNT, resetStorage, STAGE2
 } from "./modules/globals.js";
 import {storage} from 'wxt/storage';
 import {env, pipeline} from '@xenova/transformers';
-import {clearCookies, cookieListener} from "./cookieManagement.js";
+import {clearCookies, cookieListener, storeCookieResults} from "./cookieManagement.js";
 
 /**
  * @typedef {Object} CookieData
@@ -77,55 +73,6 @@ export default defineBackground({
                     await delay(4000);
                 }
             }
-        }
-
-        /**
-         * If there are further interactive elements, we start the interaction for the next one.
-         * Otherwise, we finish the interaction with the case of ignoring the cookie notice.
-         * @param interactionState
-         * @return {Promise<void>}
-         */
-
-        async function storeCookieResults(interactionState) {
-            /**
-             * @type {CookieCollection}
-             */
-            const cookiesAfterInteraction = await storage.getItem("local:cookies");
-            let aaCookies = []
-            // if rejection, there should be no AA cookies
-            for (const cookieKey in cookiesAfterInteraction) {
-                let cookie = cookiesAfterInteraction[cookieKey];
-                if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
-            }
-            console.log("aaCookies in storeCookieResult", aaCookies);
-            let scan = await storage.getItem("local:scan");
-            const interaction = await storage.getItem("local:interaction");
-
-            if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
-                // analyze cookies after interaction with both notice and page
-
-                if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
-                    if (aaCookies.length > 0) {
-                        const entry = {
-                            ie: interaction.ie, aaCookies: aaCookies
-                        }
-                        if (interaction.ie.label === Purpose.Reject) {
-                            scan.aaCookiesAfterReject.push(entry);
-                        } else if (interaction.ie.label === Purpose.SaveSettings) {
-                            scan.aaCookiesAfterSave.push(entry);
-                        } else if (interaction.ie.label === Purpose.Close) {
-                            scan.aaCookiesAfterClose.push(entry);
-                        }
-
-                    }
-                }
-            } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
-                // analyze cookies after interaction with only page and ignoring notice
-                if (aaCookies.length > 0) { // AA cookies after reject
-                    scan.aaCookiesWONoticeInteraction = aaCookies;
-                }
-            }
-            await storage.setItem("local:scan", scan);
         }
 
         /**
@@ -219,7 +166,7 @@ export default defineBackground({
                         let obj = selection.interactiveObjects[i];
                         interactiveElements[obj.label].push(obj);
                     }
-                    
+
                     console.log("interactiveElements", interactiveElements);
 
                     scan = await storage.getItem("local:scan");
@@ -288,9 +235,7 @@ export default defineBackground({
                     await delay(2000);
 
                     await browser.scripting.executeScript({
-                        target: {tabId: tabs[0].id},
-                        files: ['reportCreator.js'],
-                        injectImmediately: true
+                        target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true
                     })
                 })();
             } else if (msg === "no_notice") {
