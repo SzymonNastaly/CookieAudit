@@ -186,9 +186,6 @@ export default defineBackground({
                         ieToInteract.push(iElement);
                     }
 
-                    for (const iElement of interactiveElements[Purpose.Accept]) {
-                        ieToInteract.push(iElement);
-                    }
                     scan.ieToInteract = ieToInteract;
                     console.log("ieToInteract", ieToInteract);
                     await storage.setItem("local:scan", scan);
