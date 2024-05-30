@@ -8,7 +8,6 @@ Released under the MIT License, see included LICENSE file.
 */
 //-------------------------------------------------------------------------------
 
-const enableExtraOptions = false;
 /**
  * A scan is always in one of these 4 stages.
  * - "initial": not yet started (scan can also be undefined in this stage),
@@ -82,6 +81,10 @@ export async function awaitNoDOMChanges(initTimeout= 4000, timeout = 1000) {
             subtree: true // Observe changes in all descendants
         });
     });
+}
+
+export async function resetStorage() {
+    await Promise.all([await storage.setItem("local:selection", INITIAL_SELECTION), await storage.setItem("local:interaction", INITIAL_INTERACTION), await storage.setItem("local:scan", INITIAL_SCAN), await storage.setItem("local:cookies", [])]);
 }
 
 /**
@@ -166,34 +169,6 @@ const setStorageValue = async function (newValue, stType, key, override = true) 
 };
 
 /**
- * Helper function for retrieving content in sync or local storage.
- * @param {*} stType Storage type
- * @param {*} key
- * @returns
- */
-const getStorageValue = async function (stType, key) {
-    // try to retrieve the value
-    let value = undefined;
-    try {
-        value = await chromeWorkaround(stType, key);
-    } catch (err) {
-        console.error("Failed to access storage! Error: " + err.message);
-    }
-
-    // error handling
-    if (value === undefined) {
-        console.warn(`Warning: Value '${key}' not found in storage!`);
-        if (Array.isArray(defaultConfig[key])) {
-            value = [...defaultConfig[key]];
-        } else {
-            value = defaultConfig[key];
-        }
-        await setStorageValue(value, stType, key, false);
-    }
-    return value;
-};
-
-/**
  * Retrieves the data at the given URL with the specified type.
  * Once the response arrives, a callback is executed with the response object.
  * @param {String} url          URL to send the GET request to, intended to be a local extension URL.
@@ -252,19 +227,6 @@ const domainRemoveNoise = function (url) {
     new_url = new_url.replace(/^\./, "");
     new_url = new_url.replace(/\/.*$/, "");
     return new_url;
-};
-
-/**
- * Transforms the given domain or URL into a uniform representation.
- * @param {String} domainOrURL    Domain or URL to transform into uniform format
- * @return {String}               Transformed domain.
- */
-const cleanDomain = (domainOrURL) => {
-    try {
-        return urlToUniformDomain(new URL(domainOrURL).hostname);
-    } catch (error) {
-        return urlToUniformDomain(domainOrURL);
-    }
 };
 
 /**
@@ -331,21 +293,6 @@ export const classStringToIndex = (classStr) => {
             return 5;
         default:
             return -1;
-    }
-};
-
-/**
- * Helper function to assign static localization text to an element's textContent field.
- * @param {String} elemID Element ID
- * @param {String} locID Localization ID
- * @param {Array} args List of positional arguments for the localization.
- */
-const setStaticLocaleText = (elemID, locID, args = []) => {
-    try {
-        document.getElementById(elemID).textContent = browser.i18n.getMessage(locID, args);
-    } catch (err) {
-        console.error(`Failed to apply localization for id '${elemID}' with text '${locID}'.`);
-        console.error("Original Error Message: " + err.message);
     }
 };
 
