@@ -1,4 +1,4 @@
-import { isValidCSSIdentifier } from './utilities'
+import {isValidCSSIdentifier} from './utilities.js'
 /**
  * @typedef  {Object} Pattern
  * @property {('descendant' | 'child')}                  [relates]

@@ -1,7 +1,11 @@
 import {
-    delay, extract_text_from_element, get_clickable_elements, getFullIframeIndex, SECOND_LVL_STATUS
+    delay,
+    extract_text_from_element,
+    get_clickable_elements,
+    getFullIframeIndex,
+    SECOND_LVL_STATUS
 } from "./modules/globals.js";
-import {getSingleSelector} from "./selector.content/optimal_select.js";
+import getSingleSelector from './modules/optimal-select2/select.js';
 
 function isExternalAnchor(el) {
     if (el.tagName.toLowerCase() === "a") {

@@ -4,12 +4,12 @@
  * Construct a unique CSS query selector to access the selected DOM element(s).
  * For longevity it applies different matching and optimization strategies.
  */
-import match from './match'
-import optimize from './optimize'
-import { convertNodeList, escapeValue } from './utilities'
-import { getCommonAncestor, getCommonProperties } from './common'
-import { getSelect } from './selector'
-import { createPattern, getToString } from './pattern'
+import match from './match.js'
+import optimize from './optimize.js'
+import {convertNodeList, escapeValue} from './utilities.js'
+import {getCommonAncestor, getCommonProperties} from './common.js'
+import {getSelect} from './selector.js'
+import {createPattern, getToString} from './pattern.js'
 
 /**
  * @typedef  {Object} Options
@@ -21,7 +21,7 @@ import { createPattern, getToString } from './pattern'
  */
 
 /**
- * @typedef {import('./pattern').Pattern} Pattern
+ * @typedef {import('./pattern.js').Pattern} Pattern
  */
 
 /**

@@ -5,14 +5,14 @@
  * 2.) Improve robustness through selector transformation
  */
 
-import { getSelect } from './selector'
-import { createPattern, getToString } from './pattern'
-import { convertNodeList, partition } from './utilities'
+import {getSelect} from './selector.js'
+import {createPattern, getToString} from './pattern.js'
+import {convertNodeList, partition} from './utilities.js'
 
 /**
- * @typedef {import('./select').Options} Options
- * @typedef {import('./pattern').Pattern} Pattern
- * @typedef {import('./pattern').ToStringApi} Pattern
+ * @typedef {import('./select.js').Options} Options
+ * @typedef {import('./pattern.js').Pattern} Pattern
+ * @typedef {import('./pattern.js').ToStringApi} Pattern
  */
 
 /**

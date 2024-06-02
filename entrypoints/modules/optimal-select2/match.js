@@ -4,14 +4,14 @@
  * Retrieve selector for a node.
  */
 
-import { createPattern, getToString } from './pattern'
-import { getSelect } from './selector'
-import { escapeValue } from './utilities'
+import {createPattern, getToString} from './pattern.js'
+import {getSelect} from './selector.js'
+import {escapeValue} from './utilities.js'
 
 /**
- * @typedef {import('./select').Options} Options
- * @typedef {import('./pattern').Pattern} Pattern
- * @typedef {import('./pattern').ToStringApi} Pattern
+ * @typedef {import('./select.js').Options} Options
+ * @typedef {import('./pattern.js').Pattern} Pattern
+ * @typedef {import('./pattern.js').ToStringApi} Pattern
  */
 
 const defaultIgnore = {

@@ -5,7 +5,7 @@
  */
 
 /**
- * @typedef {import('./select').Options} Options
+ * @typedef {import('./select.js').Options} Options
  */
 
 /**

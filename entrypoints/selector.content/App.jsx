@@ -7,8 +7,7 @@ import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
 import {extract_text_from_element, get_clickable_elements, getFullIframeIndex, STAGE2} from '../modules/globals.js';
-//import {getSingleSelector} from './optimal_select.js';
-import getSingleSelector from './optimal-select2/select.js';
+import getSingleSelector from '../modules/optimal-select2/select.js';
 
 export default () => {
     // function to call when the selection has been confirmed. Sends respons back to background.js
