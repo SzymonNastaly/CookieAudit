@@ -1,5 +1,12 @@
 import {
-    delay, INTERACTION_STATE, NOTICE_STATUS, PAGE_COUNT, Purpose, resetStorage, SECOND_LVL_STATUS, STAGE2
+    delay,
+    INTERACTION_STATE,
+    NOTICE_STATUS,
+    PAGE_COUNT,
+    Purpose,
+    resetStorage,
+    SECOND_LVL_STATUS,
+    STAGE2
 } from "./modules/globals.js";
 import {storage} from 'wxt/storage';
 import {env, pipeline} from '@xenova/transformers';
@@ -78,6 +85,8 @@ export default defineBackground({
             let {msg} = message;
             if (msg === "start_scan") {
                 sendResponse({msg: "ok"});
+                let interactiveElements;
+                const USE_QUANTIZED = true;
                 (async () => {
                     if (!browser.cookies.onChanged.hasListener(cookieListener)) {
                         browser.cookies.onChanged.addListener(cookieListener);
@@ -88,22 +97,17 @@ export default defineBackground({
                     let scan = await storage.getItem('local:scan');
                     scan.stage2 = STAGE2.NOTICE_SELECTION;
                     scan["scanStart"] = Date.now();
-                    let tabs = await browser.tabs.query({active: true});
+                    const tabs = await browser.tabs.query({active: true});
                     scan["url"] = tabs[0].url;
                     await storage.setItem('local:scan', scan);
                     scan = null;
                     const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "start_select"});
-                    if (response?.msg !== "ok") throw new Error("start_select not confirmed by selector");
-                })();
-            } else if (msg === "selected_notice") {
-                const USE_QUANTIZED = true;
-                sendResponse({msg: "ok"});
-                let interactiveElements;
-                (async () => {
+                    if (response?.msg !== "selected_notice") throw new Error("start_select not confirmed by selector");
+
                     let selection = await storage.getItem('local:selection');
                     if (selection == null) throw new Error("local:selection should be set");
 
-                    let scan = await storage.getItem("local:scan");
+                    scan = await storage.getItem("local:scan");
                     scan["noticeDetected"] = true;
                     await storage.setItem("local:scan", scan);
                     scan = null;
@@ -177,7 +181,6 @@ export default defineBackground({
                         ieToInteract.push(iElement);
                     }
 
-                    const tabs = await browser.tabs.query({active: true});
                     console.log("interactiveElements[Purpose.Settings]", interactiveElements[Purpose.Settings]);
                     // if there are one or multiple setting buttons,
                     // we have to inspect if there is a relevant second level
@@ -354,6 +357,7 @@ export default defineBackground({
                     await browser.scripting.executeScript({
                         target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true
                     })
+
                 })();
             } else if (msg === "no_notice") {
                 sendResponse({msg: "ok"});

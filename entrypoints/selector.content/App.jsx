@@ -6,11 +6,14 @@ import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
 import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
-import {STAGE2, getFullIframeIndex, extract_text_from_element, get_clickable_elements} from '../modules/globals.js';
+import {extract_text_from_element, get_clickable_elements, getFullIframeIndex, STAGE2} from '../modules/globals.js';
 //import {getSingleSelector} from './optimal_select.js';
 import getSingleSelector from './optimal-select2/select.js';
 
 export default () => {
+    // function to call when the selection has been confirmed. Sends respons back to background.js
+    const sendResponseRef = useRef(null);
+
     const [isSurfing, _setIsSurfing] = useState(false);
     const isSurfingRef = useRef(isSurfing);
 
@@ -255,10 +258,11 @@ export default () => {
     function handleSelectorMessage(message, sender, sendResponse) {
         const {msg} = message;
         if (msg === "start_select") {
-            sendResponse({msg: "ok"});
             setIsSurfing(true);
             isInactive.current = false;
+            sendResponseRef.current = sendResponse;
             window.addEventListener('mousedown', handleMousedown, {once: true});
+            return true;
         } else if (msg === "cancel_select") {
             sendResponse({msg: "ok"})
             reset();
@@ -296,7 +300,11 @@ export default () => {
         }, 500);
 
         await Promise.all([storage.setItem('local:selection', selection)]);
-        await browser.runtime.sendMessage({msg: "selected_notice"});
+        if (sendResponseRef.current == null) {
+            throw new Error("No response handler defined in selector content script.");
+        } else {
+            sendResponseRef.current({msg: "selected_notice"});
+        }
     }
 
     /**
@@ -350,18 +358,22 @@ export default () => {
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button variant="default" size="xs" leftSection={<IconArrowUp size={14}/>}
                                 disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
-                                className={'dom-selector-parent'} onClick={handleSelectParent} onMouseDown={handleSelectParent} onMouseUp={handleSelectParent}>Outer</Button>
+                                className={'dom-selector-parent'} onClick={handleSelectParent}
+                                onMouseDown={handleSelectParent} onMouseUp={handleSelectParent}>Outer</Button>
                         <Button variant="default" size="xs" leftSection={<IconArrowDown size={14}/>}
                                 disabled={elementHistory.length === 0}
-                                className={'dom-selector-parent'} onClick={handleSelectChild} onMouseDown={handleSelectChild} onMouseUp={handleSelectChild}>Inner</Button>
+                                className={'dom-selector-parent'} onClick={handleSelectChild}
+                                onMouseDown={handleSelectChild} onMouseUp={handleSelectChild}>Inner</Button>
                     </Group>
                     <Group justify="center" grow style={{marginBottom: px(8)}}>
                         <Button size="xs" variant="light" color="red" leftSection={<IconX size={14}/>}
-                                className={`dom-selector-closer`} onClick={handleCancelBtn} onMouseDown={handleCancelBtn} onMouseUp={handleCancelBtn}>Cancel</Button>
+                                className={`dom-selector-closer`} onClick={handleCancelBtn}
+                                onMouseDown={handleCancelBtn} onMouseUp={handleCancelBtn}>Cancel</Button>
                     </Group>
                     <Group justify="center" grow>
                         <Button size="xs" variant="light" color="green"
-                                leftSection={<IconCheck size={14}/>} onClick={handleConfirm} onMouseDown={handleConfirm} onMouseUp={handleConfirm}>Confirm</Button>
+                                leftSection={<IconCheck size={14}/>} onClick={handleConfirm} onMouseDown={handleConfirm}
+                                onMouseUp={handleConfirm}>Confirm</Button>
                     </Group>
                 </dom-selector-data>
             </dom-selector>

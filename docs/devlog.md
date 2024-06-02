@@ -1,5 +1,22 @@
 # Devlog
 
+## June 2, 2024
+
+### How to best call selector.content
+
+- one could create a content script with `registration: "runtime"`
+    - you can register it with `registerContentScripts`. It will only first run on the first reload (apparently).
+    - you can execute it directly with `executeScript`.
+      This works for "normal" scripts.
+      But it currently doesn't work to start the selector.
+      This is probably because the selector contains a UI.
+      Such that the script returns after the UI creation -> on return it is removed again.
+- I think I will just continue using it as is: sending and receiving messages between background.js and selector.content
+    - Fortunately, I have found a slight improvement.
+      The selector sends its response only when the selection has been made and the 'Confirm' button has been clicked.
+      Like this, we remove the requirement for the additional `selected_notice` message vom selector to background.
+      This makes the whole extension more sequential in understanding.
+
 ## June 1, 2024
 
 - Do we maybe actually need a mutex for the _scan_ or _cookie_ accesses?
