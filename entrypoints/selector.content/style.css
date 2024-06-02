@@ -87,3 +87,7 @@ dom-selector-data.scrollable {
     left: inherit;
     right: inherit;
 }
+
+body {
+    background-color: inherit !important;
+}

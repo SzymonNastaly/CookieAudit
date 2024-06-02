@@ -15,6 +15,9 @@ Released under the MIT License, see included LICENSE file.
  * - "all": checking all cookie violations, a consent notice has been found if the scan is in this stage,
  * - "finished": the summary is being displayed
  */
+export const Purpose = Object.freeze({
+    Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5
+});
 export const SCANSTAGE = ["initial", "necessary", "all", "finished"];
 export const STAGE2 = Object.freeze({
     NOT_STARTED: 0,
@@ -45,13 +48,25 @@ export const INTERACTION_STATE = Object.freeze({
     PAGE_WO_NOTICE: 1
 });
 
-export const PAGE_COUNT = 5;
+export const PAGE_COUNT = 1;
 
 export const INITIAL_SELECTION = Object.freeze({
     notice: null, interactiveObjects: [], iframeFullIndex: null
 });
 export const INITIAL_INTERACTION = Object.freeze({
     ie: null, visitedPages: []
+});
+export const NOTICE_STATUS = Object.freeze({
+    WRONG_FRAME: 0,
+    SUCCESS: 1,
+    NOTICE_STILL_OPEN: 2,
+    WRONG_SELECTOR: 3
+});
+
+export const SECOND_LVL_STATUS = Object.freeze({
+    EXTERNAL_ANCHOR: 0,
+    SUCCESS: 1,
+    NEW_NOTICE: 2
 });
 
 // Function to await no changes being made to the DOM. ChatGPT
@@ -124,49 +139,110 @@ export function getFullIframeIndex(win) {
     }
 }
 
-/**
- * Helper used to transform the local.storage.get callback into an async function.
- * @param {String} key Key of the storage to retrieve.
- * @returns {Promise} A promise which will eventually contain the retrieved value.
- */
-function chromeWorkaround(stType, key) {
-    return new Promise((resolve, reject) => {
-        stType.get([key], function (result) {
-            if (browser.runtime.lastError) {
-                reject("Failed to retrieve data from storage: " + browser.runtime.lastError);
-            } else {
-                resolve(result[key]);
+export function extract_text_from_element(e, exclude_links = false) {
+    let text = [];
+    if (element_is_hidden(e) || (exclude_links && (e.nodeName === "A" || e.nodeName === "BUTTON"))) {
+        return text;
+    }
+    let cur_text = "";
+    let prv_item_type = "";
+    let children = e.childNodes;
+    children.forEach(function (item) {
+        if (item.textContent.trim() === "" || item.nodeName === "#comment") {
+            return;
+        }
+        if (item.nodeName === "BUTTON" && exclude_links === true) {
+            return;
+        } else if (item.nodeName === "A") {
+            if (exclude_links === true) {
+                return;
             }
-        });
+            let link_text = extract_text_from_element(item, exclude_links);
+            if (link_text.length > 1 || prv_item_type === "A") {
+                if (cur_text.trim() !== "") {
+                    text.push(cur_text.trim());
+                    cur_text = "";
+                }
+                text = text.concat(link_text);
+            } else if (link_text.length === 1) {
+                cur_text += " " + link_text[0].trim();
+            }
+        } else if (["#text", "EM", "STRONG", "I", "MARK"].includes(item.nodeName)) {
+            cur_text = cur_text + " " + item.textContent.trim();
+        } else if (["UL", "OL"].includes(item.nodeName)) {
+            let list_items = extract_text_from_element(item, exclude_links);
+            if (cur_text.trim() !== "") {
+                cur_text = cur_text.trim() + " ";
+            }
+            text = text.concat(Array.from(list_items).map(x => cur_text + x));
+            cur_text = "";
+        } else {
+            if (cur_text.trim() !== "") {
+                text.push(cur_text.trim());
+                cur_text = "";
+            }
+            text = text.concat(extract_text_from_element(item, exclude_links));
+        }
+        prv_item_type = item.nodeName;
+    });
+    if (cur_text.trim() !== "") {
+        text.push(cur_text.trim());
+        cur_text = "";
+    }
+    return text.filter(x => {
+        return x !== undefined;
     });
 }
 
-/**
- * Helper function for storing content in sync or local storage.
- * @param {*} newValue New value to store.
- * @param {Object} stType  Sync or Local Storage Object
- * @param {String} key Unique storage key identifier
- * @param {Boolean} override If true, will override the existing value.
- */
-const setStorageValue = async function (newValue, stType, key, override = true) {
-    let obj;
-    if (override) {
-        obj = {};
-        obj[key] = newValue;
-        stType.set(obj);
-    } else {
-        try {
-            let cValue = await chromeWorkaround(stType, key);
-            if (cValue === undefined) {
-                obj = {};
-                obj[key] = newValue;
-                stType.set(obj);
+function element_is_hidden(e) {
+    let is_hidden = true;
+    let height = e.offsetHeight;
+    let width = e.offsetWidth;
+    if (height === undefined || width === undefined) {
+        return true;
+    }
+    try {
+        let cur = e;
+        while (cur) {
+            if (window.getComputedStyle(cur).getPropertyValue("opacity") === "0") {
+                return true;
             }
-        } catch (err) {
-            throw err;
+            cur = cur.parentElement;
+        }
+    } catch (error) {
+    }
+    try {
+        is_hidden = (window.getComputedStyle(e).display === "none" || window.getComputedStyle(e).visibility === "hidden" || height === 0 || width === 0);
+    } catch (error) {
+    }
+    e.childNodes.forEach(function (item) {
+        is_hidden = is_hidden && element_is_hidden(item);
+    });
+    return is_hidden;
+}
+
+export function get_clickable_elements(parent) {
+    let elements = [];
+    for (let element of parent.getElementsByTagName("*")) {
+        if (!element_is_hidden(element) && ["DIV", "SPAN", "A", "BUTTON", "INPUT"].includes(element.tagName) && (element.tabIndex >= 0 || element.getAttribute("role") === "button" || element.getAttribute('onclick') !== null)) {
+            elements.push(element);
         }
     }
-};
+    let filtered_elements = [];
+    for (let element of elements) {
+        let parent_found = false;
+        for (let parent of elements) {
+            if (element !== parent && parent.contains(element)) {
+                parent_found = true;
+            }
+        }
+        if (parent_found === false) {
+            filtered_elements.push(element)
+        }
+    }
+    return filtered_elements;
+}
+
 
 /**
  * Retrieves the data at the given URL with the specified type.
@@ -201,7 +277,7 @@ export const escapeString = function (str) {
 /**
  * Takes a URL or a domain string and transforms it into a uniform format.
  * Examples: {"www.example.com", "https://example.com/", ".example.com"} --> "example.com"
- * @param {String} domain  Domain to clean and bring into uniform format
+ * @param {String} url  Domain to clean and bring into uniform format
  * @return {String}        Cleaned domain string.
  */
 export const urlToUniformDomain = function (url) {

@@ -6,7 +6,7 @@ import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
 import {Notifications, notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {storage} from 'wxt/storage';
-import {STAGE2, urlToUniformDomain, getFullIframeIndex} from '../modules/globals.js';
+import {STAGE2, getFullIframeIndex, extract_text_from_element, get_clickable_elements} from '../modules/globals.js';
 //import {getSingleSelector} from './optimal_select.js';
 import getSingleSelector from './optimal-select2/select.js';
 
@@ -15,8 +15,8 @@ export default () => {
     const isSurfingRef = useRef(isSurfing);
 
     // refs to handle if click/mousedown/mouseup was handled.
-    // reason: some websites capture and stop propagation of click events (but e.g. not mousedown)
-    // thus we try to react on any of the three events, in case some are not propagated through the DOM
+    // reason: some websites capture and stop propagation of click events (but e.g., not mousedown)
+    // thus we try to react to any of the three events, in case some are not propagated through the DOM
     const selectParentHandled = useRef(false);
     const selectChildHandled = useRef(false);
     const cancelHandled = useRef(false);
@@ -160,7 +160,7 @@ export default () => {
     }
 
     /**
-     * When user clicks, select the element at mouse location, sensibly.
+     * When a user clicks, select the element at mouse location, sensibly.
      * Sensible means: if the element at the location has some parent(s) with the same dimensions, choose the highest
      * such parent.
      * @param {MouseEvent} e
@@ -177,7 +177,8 @@ export default () => {
 
     /**
      * We update a state value on scroll, to force the size/position of the wrapper (which makes the blue highlight)
-     * to be recalculated during scrolling. ie if selected element moves out of the screen, the selection should too.
+     * to be recalculated during scrolling.
+     * i.e., if a selected element moves out of the screen, the selection should too.
      */
     function handleScroll() {
         setScrollY(Math.round(window.scrollY));
@@ -225,7 +226,7 @@ export default () => {
     }
 
     /**
-     * When user clicks cancel button inside selector context menu, we update the stage2 to not started and call reset()
+     * When a user clicks cancel button inside a selector context menu, we update the stage2 to not_started and call reset()
      */
     async function handleCancelBtn() {
         if (cancelHandled.current) return;
@@ -246,7 +247,7 @@ export default () => {
      * @property {string} msg - The message string.
      */
     /**
-     * start selector when message is received
+     * start selector when a message is received
      * @param {MessageObject} message
      * @param sender
      * @param sendResponse
@@ -262,110 +263,6 @@ export default () => {
             sendResponse({msg: "ok"})
             reset();
         }
-    }
-
-    function element_is_hidden(e) {
-        let is_hidden = true;
-        let height = e.offsetHeight;
-        let width = e.offsetWidth;
-        if (height === undefined || width === undefined) {
-            return true;
-        }
-        try {
-            let cur = e;
-            while (cur) {
-                if (window.getComputedStyle(cur).getPropertyValue("opacity") === "0") {
-                    return true;
-                }
-                cur = cur.parentElement;
-            }
-        } catch (error) {
-        }
-        try {
-            is_hidden = (window.getComputedStyle(e).display === "none" || window.getComputedStyle(e).visibility === "hidden" || height === 0 || width === 0);
-        } catch (error) {
-        }
-        e.childNodes.forEach(function (item) {
-            is_hidden = is_hidden && element_is_hidden(item);
-        });
-        return is_hidden;
-    }
-
-    function extract_text_from_element(e, exclude_links = false) {
-        let text = [];
-        if (element_is_hidden(e) || (exclude_links && (e.nodeName === "A" || e.nodeName === "BUTTON"))) {
-            return text;
-        }
-        let cur_text = "";
-        let prv_item_type = "";
-        let children = e.childNodes;
-        children.forEach(function (item) {
-            if (item.textContent.trim() === "" || item.nodeName === "#comment") {
-                return;
-            }
-            if (item.nodeName === "BUTTON" && exclude_links === true) {
-                return;
-            } else if (item.nodeName === "A") {
-                if (exclude_links === true) {
-                    return;
-                }
-                let link_text = extract_text_from_element(item, exclude_links);
-                if (link_text.length > 1 || prv_item_type === "A") {
-                    if (cur_text.trim() !== "") {
-                        text.push(cur_text.trim());
-                        cur_text = "";
-                    }
-                    text = text.concat(link_text);
-                } else if (link_text.length === 1) {
-                    cur_text += " " + link_text[0].trim();
-                }
-            } else if (["#text", "EM", "STRONG", "I", "MARK"].includes(item.nodeName)) {
-                cur_text = cur_text + " " + item.textContent.trim();
-            } else if (["UL", "OL"].includes(item.nodeName)) {
-                let list_items = extract_text_from_element(item, exclude_links);
-                if (cur_text.trim() !== "") {
-                    cur_text = cur_text.trim() + " ";
-                }
-                text = text.concat(Array.from(list_items).map(x => cur_text + x));
-                cur_text = "";
-            } else {
-                if (cur_text.trim() !== "") {
-                    text.push(cur_text.trim());
-                    cur_text = "";
-                }
-                text = text.concat(extract_text_from_element(item, exclude_links));
-            }
-            prv_item_type = item.nodeName;
-        });
-        if (cur_text.trim() !== "") {
-            text.push(cur_text.trim());
-            cur_text = "";
-        }
-        return text.filter(x => {
-            return x !== undefined;
-        });
-    }
-
-    function get_clickable_elements(parent) {
-        let elements = [];
-        for (let element of parent.getElementsByTagName("*")) {
-            if (!element_is_hidden(element) && ["DIV", "SPAN", "A", "BUTTON", "INPUT"].includes(element.tagName) && (element.tabIndex >= 0 || element.getAttribute("role") === "button" || element.getAttribute('onclick') !== null)) {
-                elements.push(element);
-            }
-        }
-        let filtered_elements = [];
-        for (let element of elements) {
-            let parent_found = false;
-            for (let parent of elements) {
-                if (element !== parent && parent.contains(element)) {
-                    parent_found = true;
-                }
-            }
-            if (parent_found === false) {
-                filtered_elements.push(element)
-            }
-        }
-        return filtered_elements;
     }
 
     async function handleConfirm() {

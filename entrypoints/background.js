@@ -1,5 +1,5 @@
 import {
-    delay, INTERACTION_STATE, PAGE_COUNT, resetStorage, STAGE2
+    delay, INTERACTION_STATE, NOTICE_STATUS, PAGE_COUNT, Purpose, resetStorage, SECOND_LVL_STATUS, STAGE2
 } from "./modules/globals.js";
 import {storage} from 'wxt/storage';
 import {env, pipeline} from '@xenova/transformers';
@@ -14,7 +14,7 @@ import {clearCookies, cookieListener, storeCookieResults} from "./cookieManageme
 
 /**
  * @typedef {Object.<string, CookieData>} CookieCollection
- * A collection of cookies, where each key is a string representing the cookie identifier
+ * A collection of cookies, where each key is a string representing the cookie identifier,
  * and the value is an object containing the cookie data.
  */
 
@@ -22,8 +22,8 @@ import {clearCookies, cookieListener, storeCookieResults} from "./cookieManageme
 export default defineBackground({
     type: 'module', main() {
         /**
-         * I don't entirely understand why. But by using this singleton we fix the problem that if the model is used many
-         * times, too much memory is allocated.
+         * I don't entirely understand why.
+         * But by using this singleton, we fix the problem that if the model is used many times, too much memory is allocated.
          */
         class PurposePipelineSingleton {
             static instance = null;
@@ -58,10 +58,6 @@ export default defineBackground({
             }
         }
 
-        const Purpose = Object.freeze({
-            Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5
-        });
-
         async function interactWithPage(tabs) {
             for (let i = 0; i < PAGE_COUNT; i++) {
                 let pageRet = await browser.scripting.executeScript({
@@ -95,10 +91,12 @@ export default defineBackground({
                     let tabs = await browser.tabs.query({active: true});
                     scan["url"] = tabs[0].url;
                     await storage.setItem('local:scan', scan);
+                    scan = null;
                     const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "start_select"});
                     if (response?.msg !== "ok") throw new Error("start_select not confirmed by selector");
                 })();
             } else if (msg === "selected_notice") {
+                const USE_QUANTIZED = true;
                 sendResponse({msg: "ok"});
                 let interactiveElements;
                 (async () => {
@@ -108,32 +106,25 @@ export default defineBackground({
                     let scan = await storage.getItem("local:scan");
                     scan["noticeDetected"] = true;
                     await storage.setItem("local:scan", scan);
+                    scan = null;
 
-                    // translation of selection elements
-                    let translationResponse = await translateToEnglish(selection.notice.text);
-                    let translatedNoticeText = translationResponse.resultText;
-
-                    const segmenterEn = new Intl.Segmenter('en', {granularity: 'sentence'});
-                    const segmentIter = segmenterEn.segment(translatedNoticeText);
-                    const sentences = Array.from(segmentIter).map(obj => obj.segment);
-
-                    const USE_QUANTIZED = true;
                     // Skip initial check for local models, since we are not loading any local models.
                     env.allowLocalModels = false;
-
                     // Due to a bug in onnxruntime-web, we must disable multithreading for now.
                     // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
                     env.backends.onnx.wasm.numThreads = 1;
+
                     let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
-                    if (purposeClassifier == null) throw new Error("Purpose Classifier is null");
-                    const purposeClassifications = (await purposeClassifier(sentences)).map(res => {
-                        return parseInt(res.label);
-                    });
-                    purposeClassifier = null;
-                    selection.notice.label = Math.max(...purposeClassifications);
+                    let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, selection.notice.text);
+                    if (purposeDeclared) {
+                        selection.notice.label = 1;
+                    } else {
+                        selection.notice.label = 0;
+                    }
                     scan = await storage.getItem("local:scan");
-                    scan["purposeDeclared"] = (selection.notice.label > 0);
+                    scan["purposeDeclared"] = purposeDeclared;
                     await storage.setItem("local:scan", scan);
+                    scan = null;
 
                     let ieClassifier = await IEPipelineSingleton.getInstance(USE_QUANTIZED);
                     if (ieClassifier == null) throw new Error("IE Classifier was null");
@@ -150,8 +141,6 @@ export default defineBackground({
                         selection.interactiveObjects[i].label = labels[i];
                     }
 
-                    ieClassifier = null;
-
                     await storage.setItem('local:selection', selection);
 
                     interactiveElements = {};
@@ -166,15 +155,17 @@ export default defineBackground({
                         let obj = selection.interactiveObjects[i];
                         interactiveElements[obj.label].push(obj);
                     }
-
-                    console.log("interactiveElements", interactiveElements);
+                    console.log("interactiveElements on first layer: ", interactiveElements);
 
                     scan = await storage.getItem("local:scan");
                     scan["stage2"] = STAGE2.NOTICE_INTERACTION;
                     scan["interactiveElements"] = interactiveElements;
                     scan["rejectDetected"] = (interactiveElements[Purpose.Reject].length > 0);
                     scan["closeSaveDetected"] = (interactiveElements[Purpose.Close].length > 0) || (interactiveElements[Purpose.SaveSettings].length > 0);
+                    await storage.setItem("local:scan", scan);
+                    scan = null;
 
+                    // add interactive elements that have to be interacted with, on the first level
                     let ieToInteract = [];
                     for (const iElement of interactiveElements[Purpose.Reject]) {
                         ieToInteract.push(iElement);
@@ -186,43 +177,172 @@ export default defineBackground({
                         ieToInteract.push(iElement);
                     }
 
-                    scan.ieToInteract = ieToInteract;
-                    console.log("ieToInteract", ieToInteract);
-                    await storage.setItem("local:scan", scan);
-
                     const tabs = await browser.tabs.query({active: true});
+                    console.log("interactiveElements[Purpose.Settings]", interactiveElements[Purpose.Settings]);
+                    // if there are one or multiple setting buttons,
+                    // we have to inspect if there is a relevant second level
+                    let twoLevelInteractiveElements = {};
+                    twoLevelInteractiveElements[Purpose.Accept] = []
+                    twoLevelInteractiveElements[Purpose.Close] = []
+                    twoLevelInteractiveElements[Purpose.Settings] = []
+                    twoLevelInteractiveElements[Purpose.Other] = []
+                    twoLevelInteractiveElements[Purpose.Reject] = []
+                    twoLevelInteractiveElements[Purpose.SaveSettings] = []
 
-                    // iterate over interactive elements
-                    for (let i = 0; i < scan.ieToInteract.length; i++) {
+                    // if Purpose.Settings interactive elements were detected, we only inspect them
+                    // otherwise, we have to inspect Purpose.Other buttons interactive elements
+                    let ieToSndLevel;
+                    if (interactiveElements[Purpose.Settings].length > 0) {
+                        ieToSndLevel = interactiveElements[Purpose.Settings];
+                    } else {
+                        ieToSndLevel = interactiveElements[Purpose.Other];
+                    }
+                    for (const iElement of ieToSndLevel) {
+                        console.log("inspecting for second level of iElement: ", iElement);
+
                         let interaction = await storage.getItem("local:interaction");
-                        interaction.ie = scan.ieToInteract[i];
+                        interaction.ie = iElement;
                         await storage.setItem("local:interaction", interaction);
 
-                        await browser.scripting.executeScript({
+                        const discoveryRet = await browser.scripting.executeScript({
+                            target: {tabId: tabs[0].id, allFrames: true},
+                            files: ['secondLevelDiscovery.js'],
+                            injectImmediately: true
+                        });
+                        console.log("discoveryRet", discoveryRet);
+                        let sndLevelNoticeText, sndLevelIntObjs;
+                        for (let frameRet of discoveryRet) {
+                            let result = frameRet.result;
+                            if (result != null && result.status === SECOND_LVL_STATUS.SUCCESS) {
+                                sndLevelNoticeText = result.text;
+                                sndLevelIntObjs = result.interactiveObjects;
+
+                                // run analysis on sndLevelNoticeText, probably best to do create a new function
+                                let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
+                                let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, sndLevelNoticeText)
+                                console.log(`purposeDeclared on second level: ${purposeDeclared}`);
+                                if (purposeDeclared) {
+                                    selection = await storage.getItem("local:selection");
+                                    if (selection.notice.label === 0) {
+                                        // TODO: maybe store the info somewhere that purpose was only declared on second level
+                                        selection.notice.label = 1;
+                                    }
+                                    await storage.setItem("local:selection", selection);
+                                }
+
+
+                                // run analysis on sndLevelIntObjs
+                                let sndLevelTranslatedTexts = await Promise.all(sndLevelIntObjs.map(async obj => {
+                                    let text = obj.text;
+                                    let res = await translateToEnglish(text);
+                                    return res.resultText
+                                }));
+                                const labels = (await ieClassifier(sndLevelTranslatedTexts)).map(res => {
+                                    return getIELabel(res);
+                                });
+                                for (let i = 0; i < labels.length; i++) {
+                                    sndLevelIntObjs[i].selector = [iElement.selector, ...sndLevelIntObjs[i].selector];
+                                    sndLevelIntObjs[i].label = labels[i];
+
+                                    twoLevelInteractiveElements[labels[i]].push(sndLevelIntObjs[i]);
+                                }
+                                break;
+                            } else if (result != null && result.status === SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
+                                console.log("skipping a link in first layer that leads to external site");
+                                break;
+                            } else if (result != null && result.status === SECOND_LVL_STATUS.NEW_NOTICE) {
+                                console.log("a new notice has appeared, we need the user to select again");
+                                break;
+                            }
+                        }
+                        // reset cookies and reload page
+                        await clearCookies();
+                        let scan = await storage.getItem("local:scan");
+                        await browser.tabs.update(tabs[0].id, {url: scan.url});
+                        scan = null;
+                        await delay(2000);
+                    }
+                    // ieClassifier is not needed anymore
+                    ieClassifier = null;
+
+                    // add the relevant twoLevelInteractiveElements to the list of ieToInteract
+                    for (const iElement of twoLevelInteractiveElements[Purpose.Reject]) {
+                        ieToInteract.push(iElement);
+                    }
+                    for (const iElement of twoLevelInteractiveElements[Purpose.Close]) {
+                        ieToInteract.push(iElement);
+                    }
+                    for (const iElement of twoLevelInteractiveElements[Purpose.SaveSettings]) {
+                        ieToInteract.push(iElement);
+                    }
+
+                    console.log("ieToInteract, in both levels combined:", ieToInteract);
+                    scan = await storage.getItem("local:scan");
+                    scan.ieToInteract = ieToInteract;
+                    await storage.setItem("local:scan", scan);
+                    let ieToInteractLength = scan.ieToInteract.length;
+                    scan = null;
+
+                    // iterate over interactive elements
+                    for (let i = 0; i < ieToInteractLength; i++) {
+                        let interaction = await storage.getItem("local:interaction");
+                        scan = await storage.getItem("local:scan");
+                        interaction.ie = scan.ieToInteract[i];
+                        scan = null;
+                        await storage.setItem("local:interaction", interaction);
+
+                        console.log("starting noticeInteractor for interaction: ", interaction);
+
+                        let ret = await browser.scripting.executeScript({
                             target: {tabId: tabs[0].id, allFrames: true},
                             files: ['noticeInteractor.js'],
                             injectImmediately: true
-                        })
-                        await delay(2000);
+                        });
+                        await delay(1000);
+                        let statusCodes = ret.map(obj => obj.result);
 
-                        await interactWithPage(tabs);
-                        await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
+                        if (statusCodes.some(code => code === NOTICE_STATUS.SUCCESS)) {
+                            await delay(2000);
 
-                        scan = await storage.getItem("local:scan");
-                        console.log("scan", scan);
+                            console.log("interacting with page");
+                            await interactWithPage(tabs);
+                            await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
 
-                        interaction = await storage.getItem("local:interaction");
-                        interaction.visitedPages = [];
-                        await storage.setItem("local:interaction", interaction);
+                            interaction = await storage.getItem("local:interaction");
+                            interaction.visitedPages = [];
+                            await storage.setItem("local:interaction", interaction);
 
-                        let cookies = await storage.getItem("local:cookies");
-                        console.log("cookies", cookies);
+                            let cookies = await storage.getItem("local:cookies");
+                            console.log("cookies", cookies);
 
-                        // reset cookies and reload page
-                        await clearCookies();
-                        await browser.tabs.update(tabs[0].id, {url: scan.url});
+                            // reset cookies and reload page
+                            await clearCookies();
+                            let scan = await storage.getItem("local:scan");
+                            await browser.tabs.update(tabs[0].id, {url: scan.url});
+                            scan = null;
 
-                        await delay(4000);
+                            await delay(4000);
+                        } else if (statusCodes.some(code => code === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
+                            console.log("NOTICE_STILL_OPEN");
+                            // reset cookies and reload page
+                            await clearCookies();
+                            let scan = await storage.getItem("local:scan");
+                            await browser.tabs.update(tabs[0].id, {url: scan.url});
+                            scan = null;
+
+                            await delay(4000);
+                            // maybe we need to even delete the interactor?
+                        } else if (statusCodes.some(code => code === NOTICE_STATUS.WRONG_SELECTOR)) {
+                            console.log("WRONG_SELECTOR");
+                            // reset cookies and reload page
+                            await clearCookies();
+                            let scan = await storage.getItem("local:scan");
+                            await browser.tabs.update(tabs[0].id, {url: scan.url});
+                            scan = null;
+
+                            await delay(4000);
+                            // get the user to select the different cookie notice
+                        }
                     }
 
                     // interact with page, while ignoring cookie banner
@@ -245,6 +365,7 @@ export default defineBackground({
                     let scan = await storage.getItem('local:scan');
                     scan.stage2 = STAGE2.INTERACTION_WO_NOTICE;
                     await storage.setItem('local:scan', scan);
+                    scan = null;
                 })();
             } else if (msg === "cancel_scan") {
                 sendResponse({msg: "ok"});
@@ -325,6 +446,23 @@ export default defineBackground({
             // }
 
             return resultData;*/
+        }
+
+        async function translateAndGetPurposeDeclared(purposeClassifier, untranslatedText) {
+            // translation of selection elements
+            let translationResponse = await translateToEnglish(untranslatedText);
+            let translatedNoticeText = translationResponse.resultText;
+
+            const segmenterEn = new Intl.Segmenter('en', {granularity: 'sentence'});
+            const segmentIter = segmenterEn.segment(translatedNoticeText);
+            const sentences = Array.from(segmentIter).map(obj => obj.segment);
+
+            if (purposeClassifier == null) throw new Error("Purpose Classifier is null");
+            const purposeClassifications = (await purposeClassifier(sentences)).map(res => {
+                return parseInt(res.label);
+            });
+            purposeClassifier = null;
+            return Math.max(...purposeClassifications) > 0;
         }
     }
 });

@@ -14,18 +14,11 @@ function isTrivialLink(currentUrl, linkUrl) {
         currentLocation = new URL(currentUrl);
         targetLocation = new URL(linkUrl);
     } catch (error) {
-        console.log("URL not possbile currentUrl", currentUrl);
-        console.log("linkUrl", linkUrl);
         return true;
     }
 
     // Check if the link is to the same page (ignoring hash and search)
-    if (targetLocation.origin === currentLocation.origin && targetLocation.pathname === currentLocation.pathname && targetLocation.search === '') {
-        return true;
-    }
-
-    // Check if the link is exactly the same as the current URL or it's just the current URL with any hash
-    return linkUrl === currentUrl || (targetLocation.href === currentLocation.href + targetLocation.hash);
+    return targetLocation.origin === currentLocation.origin && targetLocation.pathname === currentLocation.pathname;
 }
 
 export default defineUnlistedScript(async () => {
@@ -33,9 +26,10 @@ export default defineUnlistedScript(async () => {
 
     await delay(1000);
 
-    // find link to click on
+    // find an anchor to click on
     const scan = await storage.getItem("local:scan");
     const currentUrl = scan.url;
+    await storage.setItem("local:scan", scan);
     const currentDomain = getHostName(currentUrl);
     const headerLinks = document.querySelectorAll('header a, .header a, .nav a, nav a, a');
 

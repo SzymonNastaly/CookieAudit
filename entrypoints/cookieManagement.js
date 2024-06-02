@@ -1,14 +1,18 @@
 import {
-    classIndexToString, datetimeToExpiry, escapeString, urlToUniformDomain, isAALabel
+    classIndexToString, datetimeToExpiry, escapeString, urlToUniformDomain, isAALabel, INTERACTION_STATE, Purpose
 } from "./modules/globals.js";
 import {extractFeatures} from "./modules/extractor.js";
 import {predictClass} from "./modules/predictor.js";
+
+
+export default defineUnlistedScript(async () => {
+})
 
 const UPDATE_LIMIT = 10;
 const MINTIME = 120000;
 
 /**
- * After an interaction, store the intersting (analytics and advertising) in the scan results.
+ * After an interaction, store the interesting (analytics and advertising) in the scan results.
  * @param interactionState
  * @return {Promise<void>}
  */
@@ -19,6 +23,7 @@ export async function storeCookieResults(interactionState) {
     const cookiesAfterInteraction = await storage.getItem("local:cookies");
     let aaCookies = []
     // if rejection, there should be no AA cookies
+    console.log("cookiesAfterInteraction", cookiesAfterInteraction);
     for (const cookieKey in cookiesAfterInteraction) {
         let cookie = cookiesAfterInteraction[cookieKey];
         if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
@@ -55,7 +60,7 @@ export async function storeCookieResults(interactionState) {
 
 /**
  * Construct a string formatted key that uniquely identifies the given cookie object.
- * @param {Object}    cookieDat Stores the cookie data, expects attributes name, domain and path.
+ * @param {Object}    cookieDat Stores the cookie data, expects attribute's name, domain and path.
  * @returns {String}  string representing the cookie's key
  */
 function constructKeyFromCookie(cookieDat) {
@@ -141,7 +146,7 @@ async function insertCookieIntoStorage(serializedCookie) {
  * Remove a cookie from the browser and from historyDB
  */
 export async function clearCookies() {
-    // First we delete the cookies from the browser
+    // First, we delete the cookies from the browser
     async function removeCookie(cookie) {
         let url = "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path;
         await browser.cookies.remove({url: url, name: cookie.name});
@@ -223,7 +228,7 @@ async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
         serializedCookie = createFEInput(newCookie);
     }
 
-    // If cookie recently classified, use previous label.
+    // If cookie recently classified, use the previous label.
     let elapsed = Date.now() - serializedCookie["label_ts"];
 
     let clabel = serializedCookie["current_label"];
