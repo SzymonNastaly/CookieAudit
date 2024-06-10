@@ -1,6 +1,45 @@
 # Devlog
 
+## June 6, 2024
+
+I had a problem with shadow roots.
+It now seems fixable with the following approach:
+checking if the element at the very top (i.e., returned by `.elementFromPoint(x,y)`) contains a shadow root
+(i.e., `el.shadowRoot != null`).
+If so, run the `.elementFromPoint(x,y)` again on that root: `el.shadowRoot.elementFromPoint(x,y)`.
+
+## June 4, 2024
+
+We split up the notice interaction such that it always only clicks on one button and then returns.
+We then wait for DOM [changes to stop](#waiting-for-dom-changes-to-stop).
+The background script should inject the notice interaction into all the frames and then inspect the returns.
+
+### Waiting for DOM changes to stop
+
+The two main ways to check if the website has finished loading are:
+
+1. Checking if the number of frames (i.e., iframes) had been stable for some time. The count can be accessed
+   via `webNavigation.getAllFrames()`.
+2. Use the MutationObserver API in a separately injected content script.
+   We observe `document.body` (and the subtree) for changes.
+   If there are no changes for some time, we count the DOM as stable.
+   It is important to first wait for the number of iframes being stable:
+   Otherwise if e.g., the number of iframes is increasing,
+   and we inject the content script at time x.
+   At time x+1, there might be many more iframes.
+   We minimize the risk of this by first waiting for a stable frame count.
+
+After a reload of a page (via `tabs.update`),
+we have to wait until the `tabs.onUpdated` listeners marks the change as `complete`.
+Only after that we start the [above-mentioned](#waiting-for-dom-changes-to-stop) methods.
+
+- TODO: testing with different websites
+- TODO: fix noticeStillOpen and use it
+
 ## June 2, 2024
+
+- current TODO: create second layer selection in storage
+- TODO: think about where we initialize which classifiers in the background.js and its functions
 
 ### How to best call selector.content
 

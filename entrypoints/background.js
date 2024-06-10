@@ -1,16 +1,23 @@
+import { env, pipeline } from '@xenova/transformers'
+import { storage } from 'wxt/storage'
 import {
-    delay,
-    INTERACTION_STATE,
-    NOTICE_STATUS,
-    PAGE_COUNT,
-    Purpose,
-    resetStorage,
-    SECOND_LVL_STATUS,
-    STAGE2
-} from "./modules/globals.js";
-import {storage} from 'wxt/storage';
-import {env, pipeline} from '@xenova/transformers';
-import {clearCookies, cookieListener, storeCookieResults} from "./cookieManagement.js";
+  clearCookies,
+  cookieListener,
+  storeCookieResults,
+} from './cookieManagement.js'
+import {
+  awaitNoDOMChanges,
+  INTERACTION_STATE,
+  MAX_OTHER_BTN_COUNT,
+  NOTICE_STATUS,
+  PAGE_COUNT,
+  Purpose,
+  resetStorage,
+  SECOND_LVL_STATUS,
+  STAGE2,
+  updateTabAndWait,
+  waitStableFrames,
+} from './modules/globals.js'
 
 /**
  * @typedef {Object} CookieData
@@ -41,8 +48,16 @@ export default defineBackground({
              */
             static async getInstance(quantized = false) {
                 if (this.instance === null) {
-                    this.instance = pipeline("text-classification", "snastal/purpose_detection_model", {quantized: quantized});
+                  this.instance = pipeline('text-classification',
+                    'snastal/purpose_detection_model', {
+                      quantized: quantized,
+                      progress_callback: purposeProgress,
+                    })
                 }
+              let progress = await storage.getItem('local:progress')
+              progress.purpose = 100
+              progress.purposeDownloading = false
+              await storage.setItem('local:progress', progress)
                 return this.instance;
             }
         }
@@ -59,8 +74,14 @@ export default defineBackground({
              */
             static async getInstance(quantized = false) {
                 if (this.instance === null) {
-                    this.instance = pipeline("text-classification", "snastal/interactive_elements_model", {quantized: quantized});
+                  this.instance = pipeline('text-classification',
+                    'snastal/interactive_elements_model',
+                    { quantized: quantized, progress_callback: ieProgress })
                 }
+              let progress = await storage.getItem('local:progress')
+              progress.ie = 100
+              progress.ieDownloading = false
+              await storage.setItem('local:progress', progress)
                 return this.instance;
             }
         }
@@ -72,8 +93,13 @@ export default defineBackground({
                 });
                 let nextUrl = pageRet[0].result;
                 if (nextUrl != null) {
-                    await browser.tabs.update(tabs[0].id, {url: nextUrl});
-                    await delay(4000);
+                  await updateTabAndWait(tabs[0].id, nextUrl)
+                  // await delay(4000);
+                  await browser.scripting.executeScript({
+                    target: { tabId: tabs[0].id, allFrames: true },
+                    func: awaitNoDOMChanges,
+                    injectImmediately: true,
+                  })
                 }
             }
         }
@@ -88,12 +114,13 @@ export default defineBackground({
                 let interactiveElements;
                 const USE_QUANTIZED = true;
                 (async () => {
-                    if (!browser.cookies.onChanged.hasListener(cookieListener)) {
-                        browser.cookies.onChanged.addListener(cookieListener);
-                    }
-
                     await resetStorage();
                     await clearCookies();
+
+                  if (!browser.cookies.onChanged.hasListener(cookieListener)) {
+                    browser.cookies.onChanged.addListener(cookieListener)
+                  }
+
                     let scan = await storage.getItem('local:scan');
                     scan.stage2 = STAGE2.NOTICE_SELECTION;
                     scan["scanStart"] = Date.now();
@@ -101,9 +128,15 @@ export default defineBackground({
                     scan["url"] = tabs[0].url;
                     await storage.setItem('local:scan', scan);
                     scan = null;
+                  const mountResponse = await browser.tabs.sendMessage(
+                    tabs[0].id, { msg: 'mount_select' })
+                  console.log('mountResponse', mountResponse)
+                  if (mountResponse?.msg !== 'ok') throw new Error(
+                    'mount_select not confirmed by content script')
                     const response = await browser.tabs.sendMessage(tabs[0].id, {msg: "start_select"});
                     if (response?.msg !== "selected_notice") throw new Error("start_select not confirmed by selector");
 
+                  // getting first layer notice selection
                     let selection = await storage.getItem('local:selection');
                     if (selection == null) throw new Error("local:selection should be set");
 
@@ -198,72 +231,106 @@ export default defineBackground({
                     if (interactiveElements[Purpose.Settings].length > 0) {
                         ieToSndLevel = interactiveElements[Purpose.Settings];
                     } else {
-                        ieToSndLevel = interactiveElements[Purpose.Other];
+                      // we remove anchor tags as they often open a new page
+                      let filteredOther = interactiveElements[Purpose.Other].filter(
+                        obj => obj.tagName.toLowerCase() !== 'a')
+                      // we sort such
+                      // that the buttons on the bottom left are first in the list
+                      let sortedOther = filteredOther.sort((a, b) => {
+                        if (a.y > b.y) return -1  // Sort y descending
+                        if (a.y < b.y) return 1
+                        if (a.x < b.x) return -1  // Sort x ascending
+                        if (a.x > b.x) return 1
+                        return 0
+                      })
+                      ieToSndLevel = sortedOther.slice(0, MAX_OTHER_BTN_COUNT)
                     }
                     for (const iElement of ieToSndLevel) {
-                        console.log("inspecting for second level of iElement: ", iElement);
+                      //console.log("inspecting for second level of iElement: ", iElement);
 
                         let interaction = await storage.getItem("local:interaction");
                         interaction.ie = iElement;
                         await storage.setItem("local:interaction", interaction);
 
-                        const discoveryRet = await browser.scripting.executeScript({
-                            target: {tabId: tabs[0].id, allFrames: true},
-                            files: ['secondLevelDiscovery.js'],
-                            injectImmediately: true
+                      /*const discoveryRet = await browser.scripting.executeScript({
+                          target: {tabId: tabs[0].id, allFrames: true},
+                          files: ['secondLevelDiscovery.js'],
+                          injectImmediately: true
+                      });*/
+                      console.log(
+                        `FIRST time before awaitNoDOMChanges ${new Date().getTime() /
+                        1000}`)
+                      await browser.scripting.executeScript({
+                        target: { tabId: tabs[0].id, allFrames: true },
+                        func: awaitNoDOMChanges,
+                        injectImmediately: true,
                         });
-                        console.log("discoveryRet", discoveryRet);
+                      console.log(
+                        `SECOND time before awaitNoDOMChanges ${new Date().getTime() /
+                        1000}`)
+
+                      const inspectRet = await browser.scripting.executeScript({
+                        target: { tabId: tabs[0].id, allFrames: true },
+                        files: ['inspectBtnAndSettings.js'],
+                        injectImmediately: true,
+                      })
+                      console.log(`inspectRet after ${iElement.text}`,
+                        inspectRet)
                         let sndLevelNoticeText, sndLevelIntObjs;
-                        for (let frameRet of discoveryRet) {
-                            let result = frameRet.result;
-                            if (result != null && result.status === SECOND_LVL_STATUS.SUCCESS) {
-                                sndLevelNoticeText = result.text;
-                                sndLevelIntObjs = result.interactiveObjects;
-
-                                // run analysis on sndLevelNoticeText, probably best to do create a new function
-                                let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
-                                let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, sndLevelNoticeText)
-                                console.log(`purposeDeclared on second level: ${purposeDeclared}`);
-                                if (purposeDeclared) {
-                                    selection = await storage.getItem("local:selection");
-                                    if (selection.notice.label === 0) {
-                                        // TODO: maybe store the info somewhere that purpose was only declared on second level
-                                        selection.notice.label = 1;
-                                    }
-                                    await storage.setItem("local:selection", selection);
-                                }
-
-
-                                // run analysis on sndLevelIntObjs
-                                let sndLevelTranslatedTexts = await Promise.all(sndLevelIntObjs.map(async obj => {
-                                    let text = obj.text;
-                                    let res = await translateToEnglish(text);
-                                    return res.resultText
-                                }));
-                                const labels = (await ieClassifier(sndLevelTranslatedTexts)).map(res => {
-                                    return getIELabel(res);
-                                });
-                                for (let i = 0; i < labels.length; i++) {
-                                    sndLevelIntObjs[i].selector = [iElement.selector, ...sndLevelIntObjs[i].selector];
-                                    sndLevelIntObjs[i].label = labels[i];
-
-                                    twoLevelInteractiveElements[labels[i]].push(sndLevelIntObjs[i]);
-                                }
+                      for (let frameRet of inspectRet) {
+                        let inspectResult = frameRet.result
+                        if (inspectResult != null && inspectResult.status ===
+                          SECOND_LVL_STATUS.SAME_NOTICE) {
+                          console.log('determined SAME_NOTICE');
+                          ({
+                            sndLevelNoticeText, sndLevelIntObjs,
+                          } = await processSelectedSettings(tabs, frameRet,
+                            ieClassifier, twoLevelInteractiveElements, iElement,
+                            USE_QUANTIZED))
                                 break;
-                            } else if (result != null && result.status === SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
+                        } else if (inspectResult != null &&
+                          inspectResult.status ===
+                          SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
+                          console.log('determined EXTERNAL_ANCHOR')
                                 console.log("skipping a link in first layer that leads to external site");
                                 break;
-                            } else if (result != null && result.status === SECOND_LVL_STATUS.NEW_NOTICE) {
-                                console.log("a new notice has appeared, we need the user to select again");
+                        } else if (inspectResult != null &&
+                          inspectResult.status ===
+                          SECOND_LVL_STATUS.NEW_NOTICE) {
+                          console.log('determined NEW_NOTICE')
+                          let scan = await storage.getItem('local:scan')
+                          scan.stage2 = STAGE2.SECOND_SELECTION
+                          await storage.setItem('local:scan', scan)
+                          const mountResponse = await browser.tabs.sendMessage(
+                            tabs[0].id, { msg: 'mount_select' })
+                          if (mountResponse?.msg !== 'ok') throw new Error(
+                            'mount_select not confirmed by content script')
+                          const response = await browser.tabs.sendMessage(
+                            tabs[0].id, { msg: 'start_select' })
+                          if (response?.msg !==
+                            'selected_notice') throw new Error(
+                            'start_select not confirmed by selector')
+
+                          let secondSelections = await storage.getItem(
+                            'local:second_selections')
+                          if (secondSelections == null ||
+                            secondSelections.length === 0) throw new Error(
+                            'local:second_selections should be set');
+                          ({
+                            sndLevelNoticeText, sndLevelIntObjs,
+                          } = await processSelectedSettings(tabs, frameRet,
+                            ieClassifier, twoLevelInteractiveElements, iElement,
+                            USE_QUANTIZED))
                                 break;
                             }
                         }
                         // reset cookies and reload page
                         await clearCookies();
                         let scan = await storage.getItem("local:scan");
-                        await browser.tabs.update(tabs[0].id, {url: scan.url});
+                      await updateTabAndWait(tabs[0].id, scan.url)
                         scan = null;
-                        await delay(2000);
+                      //await delay(4000);
+
                     }
                     // ieClassifier is not needed anymore
                     ieClassifier = null;
@@ -296,17 +363,23 @@ export default defineBackground({
 
                         console.log("starting noticeInteractor for interaction: ", interaction);
 
-                        let ret = await browser.scripting.executeScript({
+                      await waitStableFrames(tabs[0].id)
+                      await browser.scripting.executeScript({
                             target: {tabId: tabs[0].id, allFrames: true},
-                            files: ['noticeInteractor.js'],
+                        func: awaitNoDOMChanges,
                             injectImmediately: true
                         });
-                        await delay(1000);
-                        let statusCodes = ret.map(obj => obj.result);
 
-                        if (statusCodes.some(code => code === NOTICE_STATUS.SUCCESS)) {
-                            await delay(2000);
+                      let wasSuccess = await noticeInteractAndWait(tabs[0].id)
 
+                      if (interaction.ie.selector.length === 2 && wasSuccess) {
+                        interaction.ie.selector.shift()
+                        await storage.setItem('local:interaction', interaction)
+
+                        wasSuccess = noticeInteractAndWait(tabs[0].id)
+                      }
+
+                      if (wasSuccess) {
                             console.log("interacting with page");
                             await interactWithPage(tabs);
                             await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
@@ -315,44 +388,35 @@ export default defineBackground({
                             interaction.visitedPages = [];
                             await storage.setItem("local:interaction", interaction);
 
-                            let cookies = await storage.getItem("local:cookies");
-                            console.log("cookies", cookies);
-
                             // reset cookies and reload page
                             await clearCookies();
                             let scan = await storage.getItem("local:scan");
-                            await browser.tabs.update(tabs[0].id, {url: scan.url});
+                        await updateTabAndWait(tabs[0].id, scan.url)
                             scan = null;
-
-                            await delay(4000);
-                        } else if (statusCodes.some(code => code === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
-                            console.log("NOTICE_STILL_OPEN");
+                      } else if (!wasSuccess) {
                             // reset cookies and reload page
                             await clearCookies();
                             let scan = await storage.getItem("local:scan");
-                            await browser.tabs.update(tabs[0].id, {url: scan.url});
+                        await updateTabAndWait(tabs[0].id, scan.url)
                             scan = null;
-
-                            await delay(4000);
-                            // maybe we need to even delete the interactor?
-                        } else if (statusCodes.some(code => code === NOTICE_STATUS.WRONG_SELECTOR)) {
-                            console.log("WRONG_SELECTOR");
-                            // reset cookies and reload page
-                            await clearCookies();
-                            let scan = await storage.getItem("local:scan");
-                            await browser.tabs.update(tabs[0].id, {url: scan.url});
-                            scan = null;
-
-                            await delay(4000);
-                            // get the user to select the different cookie notice
                         }
                     }
 
                     // interact with page, while ignoring cookie banner
                     await interactWithPage(tabs);
-                    await delay(2000);
+                  // await delay(2000);
+                  await browser.scripting.executeScript({
+                    target: { tabId: tabs[0].id, allFrames: true },
+                    func: awaitNoDOMChanges,
+                    injectImmediately: true,
+                  })
                     await storeCookieResults(INTERACTION_STATE.PAGE_WO_NOTICE);
-                    await delay(2000);
+                  // await delay(2000);
+                  await browser.scripting.executeScript({
+                    target: { tabId: tabs[0].id, allFrames: true },
+                    func: awaitNoDOMChanges,
+                    injectImmediately: true,
+                  })
 
                     await browser.scripting.executeScript({
                         target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true
@@ -372,7 +436,6 @@ export default defineBackground({
                     scan = null;
                 })();
             } else if (msg === "cancel_scan") {
-                sendResponse({msg: "ok"});
                 (async () => {
                     if (browser.cookies.onChanged.hasListener(cookieListener)) {
                         browser.cookies.onChanged.removeListener(cookieListener);
@@ -380,8 +443,10 @@ export default defineBackground({
                     await resetStorage();
                     await clearCookies();
                     const tabs = await browser.tabs.query({active: true});
-                    await browser.tabs.update(tabs[0].id, {url: tabs[0].url});
+                  await updateTabAndWait(tabs[0].id, tabs[0].url)
+                  sendResponse({ msg: 'ok' })
                 })();
+              return true
             }
         });
 
@@ -468,5 +533,130 @@ export default defineBackground({
             purposeClassifier = null;
             return Math.max(...purposeClassifications) > 0;
         }
+
+    /**
+     *
+     * @param {Tab[]} tabs
+     * @param {InjectionResult} frameRet
+     * @param {Function} ieClassifier
+     * @param twoLevelInteractiveElements
+     * @param iElement
+     * @param {boolean} useQuantized
+     * @return {Promise<{sndLevelIntObjs: (*|[]|null), sndLevelNoticeText: *}>}
+     */
+    async function processSelectedSettings (
+      tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
+      useQuantized) {
+      const secondSelections = await storage.getItem('local:second_selections')
+      let result = { text: null, interactiveObjects: null }
+      if (secondSelections.length > 0) {
+        result.text = secondSelections[secondSelections.length - 1].notice.text
+        result.interactiveObjects = secondSelections[secondSelections.length -
+        1].interactiveObjects
+      }
+
+      let sndLevelNoticeText = result.text
+      let sndLevelIntObjs = result.interactiveObjects
+
+      // run analysis on sndLevelNoticeText, probably best to do create a new function
+      let purposeClassifier = await PurposePipelineSingleton.getInstance(
+        useQuantized)
+      let purposeDeclared = await translateAndGetPurposeDeclared(
+        purposeClassifier, sndLevelNoticeText)
+      console.log(`purposeDeclared on second level: ${purposeDeclared}`)
+      if (purposeDeclared) {
+        let selection = await storage.getItem('local:selection')
+        if (selection.notice.label === 0) {
+          // TODO: maybe store the info somewhere that purpose was only declared on second level
+          selection.notice.label = 1
+        }
+        await storage.setItem('local:selection', selection)
+      }
+
+      // run analysis on sndLevelIntObjs
+      let sndLevelTranslatedTexts = await Promise.all(
+        sndLevelIntObjs.map(async obj => {
+          let text = obj.text
+          let res = await translateToEnglish(text)
+          return res.resultText
+        }))
+      const labels = (await ieClassifier(sndLevelTranslatedTexts)).map(res => {
+        return getIELabel(res)
+      })
+      for (let i = 0; i < labels.length; i++) {
+        sndLevelIntObjs[i].selector = [
+          iElement.selector[0],
+          ...sndLevelIntObjs[i].selector]
+        sndLevelIntObjs[i].label = labels[i]
+
+        twoLevelInteractiveElements[labels[i]].push(sndLevelIntObjs[i])
+      }
+      return { sndLevelNoticeText, sndLevelIntObjs }
+    }
+
+    /**
+     * Clicks on the current first selector in local:interaction and waits for the DOM changes to finish.
+     * @param {number} tabId
+     * @return {Promise<boolean>} - True, if the button click happened without problems.
+     */
+    async function noticeInteractAndWait (tabId) {
+      let statusCodes, wasSuccess
+      let ret = await browser.scripting.executeScript({
+        target: { tabId: tabId, allFrames: true },
+        files: ['noticeInteractor.js'],
+        injectImmediately: true,
+      })
+      statusCodes = ret.map(obj => obj.result)
+      await waitStableFrames(tabId)
+      await browser.scripting.executeScript({
+        target: { tabId: tabId, allFrames: true },
+        func: awaitNoDOMChanges,
+        injectImmediately: true,
+      })
+
+      if (statusCodes.some(code => code === NOTICE_STATUS.SUCCESS)) {
+        wasSuccess = true
+      } else if (statusCodes.some(
+        code => code === NOTICE_STATUS.WRONG_SELECTOR)) {
+        console.log('WRONG_SELECTOR')
+        wasSuccess = false
+        // get the user to select the different cookie notice
+      }
+
+      // TODO: this is currently not working,
+      //  but something similar should be added
+      //  to check if the notice has actually disappeared.
+      /*ret = await browser.scripting.executeScript({
+          target: {tabId: tabId, allFrames: true}, files: ['noticeStillOpen.js'], injectImmediately: true
+      });
+      statusCodes = ret.map(obj => obj.result);
+      if (statusCodes.some(code => code === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
+          let selection = await storage.getItem("local:selection");
+          let secondSelection = await storage.getItem("local:second_selection");
+          console.log(`NOTICE_STILL_OPEN sel: ${JSON.stringify(selection)} secSel: ${JSON.stringify(secondSelection)}`);
+          wasSuccess = false;
+      } else if (statusCodes.some(code => code === NOTICE_STATUS.NOTICE_CLOSED)) {
+          console.log("NOTICE_CLOSED");
+          wasSuccess = true;
+      }*/
+
+      return wasSuccess
+    }
+
+    async function purposeProgress (args) {
+      if (args.status !== 'progress') return
+      let progress = await storage.getItem('local:progress')
+      progress.purpose = Math.trunc(args.progress)
+      progress.purposeDownloading = true
+      await storage.setItem('local:progress', progress)
+    }
+
+    async function ieProgress (args) {
+      if (args.status !== 'progress') return
+      let progress = await storage.getItem('local:progress')
+      progress.ie = Math.trunc(args.progress)
+      progress.ieDownloading = true
+      await storage.setItem('local:progress', progress)
+    }
     }
 });

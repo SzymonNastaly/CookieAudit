@@ -12,7 +12,7 @@ export default defineConfig({
         web_accessible_resources: [
             {
                 matches: ["<all_urls>"],
-                resources: ['ext_data/*', 'noticeInteractor.js', 'noticeInteractor2.js', 'reportCreator.js', "secondLevelDiscovery.js"],
+                resources: ['ext_data/*', "cookieManagement.js", "inspectBtnAndSettings.js", 'noticeInteractor.js', "noticeStillOpen.js", "pageInteractor.js", 'reportCreator.js', "retrieveDataFromNotice.js"],
             }
         ],
         content_security_policy: {

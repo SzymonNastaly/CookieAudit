@@ -1,5 +1,6 @@
 dom-selector,
 dom-selector * {
+    margin: 0 !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -65,7 +66,7 @@ dom-selector-data {
     box-shadow: 2px 2px 4px 2px #0002, 0 0 0 1px #0001;
     background: #fff;
     border-radius: 6px;
-    min-width: 250px;
+    min-width: 100px;
 }
 
 dom-selector-data.setbelow {

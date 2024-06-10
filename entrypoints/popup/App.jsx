@@ -1,11 +1,20 @@
-import {useState, useEffect, useRef} from 'react';
-import './App.css';
-import '@mantine/core/styles.css';
-import {MantineProvider} from '@mantine/core';
-import {Badge, Container, Stack, Text, Group, Center, Button, Divider} from '@mantine/core';
-import {storage} from 'wxt/storage';
-import {STAGE2} from '../modules/globals.js'
-
+import {
+    Badge,
+    Button,
+    Center,
+    Container,
+    Divider,
+    Group,
+    MantineProvider,
+    Progress,
+    Stack,
+    Text,
+} from '@mantine/core'
+import { useEffect, useRef, useState } from 'react'
+import './App.css'
+import '@mantine/core/styles.css'
+import { storage } from 'wxt/storage'
+import { STAGE2 } from '../modules/globals.js'
 
 /**
  * Retrieve Url of the active tab.
@@ -22,6 +31,13 @@ async function getURL() {
 }
 
 export default function App() {
+    const [startDisabled, setStartDisabled] = useState(false)
+
+    const [ieProgress, setIeProgress] = useState(
+      { isDownloading: false, value: 0 })
+    const [purposeProgress, setPurposeProgress] = useState(
+      { isDownloading: false, value: 0 })
+
     const [scan, _setScan] = useState(null);
     const scanRef = useRef(null);
 
@@ -37,12 +53,38 @@ export default function App() {
                 setScan(localScan);
             }
         });
+        storage.getItem('local:progress').then((progress) => {
+            if (progress != null) {
+                setIeProgress({
+                    isDownloading: progress.ieDownloading,
+                    value: progress.ie,
+                })
+                setPurposeProgress({
+                    isDownloading: progress.purposeDownloading,
+                    value: progress.purpose,
+                })
+            }
+        })
 
-        const unwatch = storage.watch('local:scan', (newScan, _) => {
+        const unwatchScan = storage.watch('local:scan', (newScan, _) => {
             setScan(newScan);
         });
+        const unwatchProgress = storage.watch('local:progress',
+          (newProgress, _) => {
+              if (newProgress != null) {
+                  setIeProgress({
+                      isDownloading: newProgress.ieDownloading,
+                      value: newProgress.ie,
+                  })
+                  setPurposeProgress({
+                      isDownloading: newProgress.purposeDownloading,
+                      value: newProgress.purpose,
+                  })
+              }
+          })
+
         return () => {
-            unwatch();
+            unwatchScan()
         };
     }, []);
 
@@ -79,10 +121,11 @@ export default function App() {
     }
 
     async function cancelScan() {
+        setStartDisabled(true)
         const response = await browser.runtime.sendMessage({msg: "cancel_scan"});
         console.log("response after cancel_scan", response);
         if (response.msg !== "ok") throw new Error("cancel_scan was not confirmed by background.js");
-
+        setStartDisabled(false)
         // close popup
         window.close();
     }
@@ -116,7 +159,9 @@ export default function App() {
                     {isStage(scan,STAGE2.NOT_STARTED) && (<Container>
                         <Text>Open the target website</Text>
                         <Text>Close all other tabs before starting a scan</Text>
-                        <Button variant="light" color="green" onClick={startScan}>Start Scan</Button>
+                        <Button variant="light" color="green"
+                                onClick={startScan} disabled={startDisabled}>Start
+                            Scan</Button>
                     </Container>)}
                     {isStage(scan,STAGE2.NOTICE_SELECTION) && (<Container>
                         <Text>Please select the cookie notice.</Text>
@@ -129,6 +174,16 @@ export default function App() {
                     </Container>)}
                 </Group>
                 <Divider my="md" />
+                <Group justify="center" grow>
+                    {(purposeProgress.value < 100 || ieProgress.value < 100) &&
+                      (<Container>
+                          <Text>Downloading Data</Text>
+                          <Progress
+                            value={(purposeProgress.value + ieProgress.value) /
+                              2}/>
+                          <Divider my="md"/>
+                      </Container>)}
+                </Group>
                 <Group justify="center" grow>
                     <Button variant="light" color="red" onClick={cancelScan}>Cancel Scan</Button>
                 </Group>

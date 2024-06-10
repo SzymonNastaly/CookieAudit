@@ -1,15 +1,28 @@
-import {useEffect, useRef, useState} from 'react';
-import './App.module.css';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
-import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
-import {Notifications, notifications} from '@mantine/notifications';
-import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
-import {storage} from 'wxt/storage';
-import {extract_text_from_element, get_clickable_elements, getFullIframeIndex, STAGE2} from '../modules/globals.js';
-import getSingleSelector from '../modules/optimal-select2/select.js';
+import { Button, Group, MantineProvider, px, Stack } from '@mantine/core'
+import { Notifications, notifications } from '@mantine/notifications'
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconCheck,
+  IconX,
+} from '@tabler/icons-react'
+import { useEffect, useRef, useState } from 'react'
+import './App.module.css'
+import '@mantine/core/styles.css'
+import '@mantine/notifications/styles.css'
+import { storage } from 'wxt/storage'
+import {
+  extract_text_from_element,
+  get_clickable_elements,
+  getFullIframeIndex,
+  STAGE2,
+} from '../modules/globals.js'
+import getSingleSelector from '../modules/optimal-select2/select.js'
 
 export default () => {
+  const dialogRef = useRef(null)
+  const dataRef = useRef(null)
+
     // function to call when the selection has been confirmed. Sends respons back to background.js
     const sendResponseRef = useRef(null);
 
@@ -93,14 +106,54 @@ export default () => {
         if (isInactive.current || selectedDOMElementRef.current) return;
         const element = document.elementFromPoint(e.clientX, e.clientY);
         if (!element) return;
+      if (element.shadowRoot != null) {
+        // the mapped element contains a shadow root
+        let root = element.shadowRoot
+        console.log()
+        if (root.elementFromPoint(e.clientX, e.clientY) == null) return
+        setHoveringDOMElement(root.elementFromPoint(e.clientX, e.clientY))
 
-        setHoveringDOMElement(element);
+        //setHoveringDOMElement(findFirstAreaChild(Array.from(root.children)));
+
+        function findFirstAreaChild (rootChildren) {
+          const queue = rootChildren
+
+          while (queue.length > 0) {
+            const element = queue.shift() // Get and remove the first element from the queue
+
+            // Check if the element is a <style> or <script> element
+            if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT' ||
+              element.nodeType !== 1) {
+              continue // Skip this element
+            }
+
+            // Get dimensions of the element to calculate the area
+            const rect = element.getBoundingClientRect()
+            const area = rect.width * rect.height
+
+            // Check if the area is greater than 1 pixel (not 1x1 or smaller)
+            if (area > 1) {
+              return element // Stop the search and return the element
+            }
+
+            // Enqueue child elements to continue the BFS
+            for (const child of element.children) {
+              queue.push(child)
+            }
+          }
+          return null // If no element is found, return null
+        }
+      } else {
+        setHoveringDOMElement(element)
+      }
     }
 
     /**
      * Reset all relevant selector state to initial values.
      */
     function reset() {
+      let domSelectorData = document.querySelector('#dom-selector-data')
+      domSelectorData.close()
         setElementHistory([]);
         setSelectedDOMElement(null);
         setHoveringDOMElement(null);
@@ -175,6 +228,9 @@ export default () => {
         selected = climbUpEquivalenceTree(selected);
         setSelectedDOMElement(selected);
         if (!selected) console.error("Error: Failed to find the Selected element. Try to fetch again.")
+
+      let domSelectorData = document.querySelector('#dom-selector-data')
+      domSelectorData.showModal()
     }
 
     /**
@@ -234,10 +290,13 @@ export default () => {
         if (cancelHandled.current) return;
         cancelHandled.current = true;
 
-        let scan = storage.getItem('local:scan');
+      let scan = await storage.getItem('local:scan')
         scan.stage2 = STAGE2.NOT_STARTED;
         await storage.setItem('local:scan', scan);
         reset();
+
+      let domSelectorData = document.querySelector('#dom-selector-data')
+      domSelectorData.close()
 
         setTimeout(() => {
             cancelHandled.current = false;
@@ -257,6 +316,12 @@ export default () => {
     function handleSelectorMessage(message, sender, sendResponse) {
         const {msg} = message;
         if (msg === "start_select") {
+          console.log('received start_select')
+
+          let domSelector = document.querySelector('dom-selector')
+          domSelector.showPopover()
+
+
             setIsSurfing(true);
             isInactive.current = false;
             sendResponseRef.current = sendResponse;
@@ -272,6 +337,9 @@ export default () => {
         if (confirmHandled.current) return;
         confirmHandled.current = true;
 
+      let domSelectorData = document.querySelector('#dom-selector-data')
+      domSelectorData.close()
+
         notifications.show({
             title: 'Confirmed', message: 'Cookie banner was selected'
         });
@@ -282,9 +350,13 @@ export default () => {
         interactiveElements.current = get_clickable_elements(selected);
         let interactiveObjects = [];
         for (let i = 0; i < interactiveElements.current.length; i++) {
+          let boundingClientRect = interactiveElements.current[i].getBoundingClientRect()
             interactiveObjects.push({
                 selector: [getSingleSelector(interactiveElements.current[i])],
                 text: extract_text_from_element(interactiveElements.current[i]).join(' '),
+              tagName: (interactiveElements.current[i].tagName.toLowerCase()),
+              x: boundingClientRect.x,
+              y: boundingClientRect.y,
                 label: null
             });
         }
@@ -294,11 +366,21 @@ export default () => {
             interactiveObjects: interactiveObjects,
             iframeFullIndex: getFullIframeIndex(window)
         };
+      console.log('selected element is: ', selected)
         setTimeout(() => {
             confirmHandled.current = false;
         }, 500);
 
-        await Promise.all([storage.setItem('local:selection', selection)]);
+      const scan = await storage.getItem('local:scan')
+      if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
+        await storage.setItem('local:selection', selection)
+      } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
+        let secondSelections = await storage.getItem('local:second_selections')
+        secondSelections.push(selection)
+        await storage.setItem('local:second_selections', secondSelections)
+      }
+
+
         if (sendResponseRef.current == null) {
             throw new Error("No response handler defined in selector content script.");
         } else {
@@ -315,6 +397,15 @@ export default () => {
             reset();
         }
     }
+
+  useEffect(() => {
+    if (dialogRef.current && dataRef.current) {
+      const childHeight = dataRef.current.offsetHeight
+      dialogRef.current.style.height = `${childHeight}px`
+      const childWidth = dataRef.current.offsetWidth
+      dialogRef.current.style.width = `${childWidth}px`
+    }
+  }, [selectedDOMElement])
 
     useEffect(() => {
         browser.runtime.onMessage.addListener(handleSelectorMessage);
@@ -346,36 +437,63 @@ export default () => {
     return (<MantineProvider>
         <Notifications style={{zIndex: 999999999999999}}/>
         <Stack>
-            <dom-selector
-                className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
-                style={{
-                    ...(selectedDOMElement ? wrapStyle(selectedDOMElement, scrollY) : wrapStyle(hoveringDOMElement, scrollY)),
-                    pointerEvents: selectedDOMElement ? 'auto' : 'none',
-                    userSelect: selectedDOMElement ? 'auto' : 'none'
-                }}>
-                <dom-selector-data style={{display: (selectedDOMElement && isSurfing) ? 'block' : 'none'}}>
-                    <Group justify="center" grow style={{marginBottom: px(8)}}>
-                        <Button variant="default" size="xs" leftSection={<IconArrowUp size={14}/>}
-                                disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
-                                className={'dom-selector-parent'} onClick={handleSelectParent}
-                                onMouseDown={handleSelectParent} onMouseUp={handleSelectParent}>Outer</Button>
-                        <Button variant="default" size="xs" leftSection={<IconArrowDown size={14}/>}
-                                disabled={elementHistory.length === 0}
-                                className={'dom-selector-parent'} onClick={handleSelectChild}
-                                onMouseDown={handleSelectChild} onMouseUp={handleSelectChild}>Inner</Button>
-                    </Group>
-                    <Group justify="center" grow style={{marginBottom: px(8)}}>
-                        <Button size="xs" variant="light" color="red" leftSection={<IconX size={14}/>}
-                                className={`dom-selector-closer`} onClick={handleCancelBtn}
-                                onMouseDown={handleCancelBtn} onMouseUp={handleCancelBtn}>Cancel</Button>
-                    </Group>
-                    <Group justify="center" grow>
-                        <Button size="xs" variant="light" color="green"
-                                leftSection={<IconCheck size={14}/>} onClick={handleConfirm} onMouseDown={handleConfirm}
-                                onMouseUp={handleConfirm}>Confirm</Button>
-                    </Group>
-                </dom-selector-data>
-            </dom-selector>
+          <dom-selector
+            popover="manual"
+            className={`${isSurfing
+              ? 'surfing'
+              : 'notSurfing'} ${selectedDOMElement
+              ? 'selected'
+              : 'notSelected'}`}
+            style={{
+              ...(selectedDOMElement ? wrapStyle(selectedDOMElement,
+                scrollY) : wrapStyle(hoveringDOMElement, scrollY)),
+              pointerEvents: selectedDOMElement ? 'auto' : 'none',
+              userSelect: selectedDOMElement ? 'auto' : 'none',
+            }}>
+            <dialog id="dom-selector-data" ref={dialogRef}>
+              <dom-selector-data style={{
+                display: (selectedDOMElement && isSurfing)
+                  ? 'block'
+                  : 'none',
+              }} ref={dataRef}>
+                <Group justify="center" grow
+                       style={{ marginBottom: px(8) }}>
+                  <Button variant="default" size="xs"
+                          leftSection={<IconArrowUp size={14}/>}
+                          disabled={!selectedDOMElementRef.current ||
+                            !skipZeroAreaNodes(
+                              selectedDOMElementRef.current.parentElement)}
+                          className={'dom-selector-parent'}
+                          onClick={handleSelectParent}
+                          onMouseDown={handleSelectParent}
+                          onMouseUp={handleSelectParent}>Outer</Button>
+                  <Button variant="default" size="xs"
+                          leftSection={<IconArrowDown size={14}/>}
+                          disabled={elementHistory.length === 0}
+                          className={'dom-selector-parent'}
+                          onClick={handleSelectChild}
+                          onMouseDown={handleSelectChild}
+                          onMouseUp={handleSelectChild}>Inner</Button>
+                </Group>
+                <Group justify="center" grow
+                       style={{ marginBottom: px(8) }}>
+                  <Button size="xs" variant="light" color="red"
+                          leftSection={<IconX size={14}/>}
+                          className={`dom-selector-closer`}
+                          onClick={handleCancelBtn}
+                          onMouseDown={handleCancelBtn}
+                          onMouseUp={handleCancelBtn}>Cancel</Button>
+                </Group>
+                <Group justify="center" grow>
+                  <Button size="xs" variant="light" color="green"
+                          leftSection={<IconCheck size={14}/>}
+                          onClick={handleConfirm}
+                          onMouseDown={handleConfirm}
+                          onMouseUp={handleConfirm}>Confirm</Button>
+                </Group>
+              </dom-selector-data>
+            </dialog>
+          </dom-selector>
         </Stack>
     </MantineProvider>);
 };

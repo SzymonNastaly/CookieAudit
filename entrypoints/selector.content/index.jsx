@@ -6,16 +6,16 @@
     License: MIT License
 */
 //import {fetchEasylist} from '../content/banner.js';
-import './style.css';
-import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-
+import './style.css'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
 
 export default defineContentScript({
     matches: ["<all_urls>"], allFrames: true,
 
     async main(ctx) {
-        const ui = await createIntegratedUi(ctx, {
+      browser.runtime.onMessage.addListener(handleMountMessage)
+      const ui = createIntegratedUi(ctx, {
             name: 'selector-ui', position: 'inline', anchor: 'body', onMount: (container) => {
                 // Container is a body, and React warns when creating a root on the body, so create a wrapper div
                 const app = document.createElement('div');
@@ -30,6 +30,15 @@ export default defineContentScript({
                 root?.unmount();
             },
         });
-        ui.mount();
+
+      function handleMountMessage (message, sender, sendResponse) {
+        const { msg } = message
+        if (msg === 'mount_select') {
+          if (!ui.mounted) {
+            ui.mount()
+          }
+          sendResponse({ msg: 'ok' })
+        }
+      }
     },
 });
