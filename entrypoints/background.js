@@ -447,6 +447,14 @@ export default defineBackground({
                   sendResponse({ msg: 'ok' })
                 })();
               return true
+            } else if (msg === 'relay') {
+              (async () => {
+                const { data } = message
+                const tabs = await browser.tabs.query({ active: true })
+                const res = await browser.tabs.sendMessage(tabs[0].id, data)
+                sendResponse({ msg: res.msg })
+              })()
+              return true
             }
         });
 

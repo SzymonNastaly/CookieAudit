@@ -8,6 +8,9 @@ export default defineConfig({
         plugins: [react()]
     }),
     manifest: {
+        name: "__MSG_ext_name__",
+        description: "__MSG_ext_description__",
+        default_locale: "en",
         permissions: ["cookies", "activeTab", "storage", "unlimitedStorage", "tabs", "scripting", "webNavigation"],
         web_accessible_resources: [
             {

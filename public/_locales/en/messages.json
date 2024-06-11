@@ -1,0 +1,53 @@
+{
+  "ext_description": {
+    "message": "Investigate cookie compliance on websites."
+  },
+  "ext_name": {
+    "message": "Cookie Audit"
+  },
+  "popup_cancelScanBtn": {
+    "message": "Cancel Scan"
+  },
+  "popup_download": {
+    "message": "Downloading models for banner detection."
+  },
+  "popup_errorTitle": {
+    "message": "Error"
+  },
+  "popup_initialInstruction": {
+    "message": "Open the target website and close all other tabs and browser windows before starting a scan."
+  },
+  "popup_noNoticeBtn": {
+    "message": "No Cookie Notice"
+  },
+  "popup_skipSelection": {
+    "message": "Please select the cookie notice. If there is no notice, skip the selection below."
+  },
+  "popup_startScanBtn": {
+    "message": "Start Scan"
+  },
+  "popup_tooManyTabsText": {
+    "message": "More than one tab is open. Please close the other tabs."
+  },
+  "popup_tooManyWindowsText": {
+    "message": "More than one window of this browser is open. Please close the other windows."
+  },
+  "selector_cancelBtn": {
+    "message": "Cancel"
+  },
+  "selector_confirmBtn": {
+    "message": "Confirm"
+  },
+  "selector_innerBtn": {
+    "message": "Inner"
+  },
+  "selector_outerBtn": {
+    "message": "Outer"
+  },
+  "selector_selectedBannerText": {
+    "message": "The cookie notice was selected."
+  },
+  "selector_selectedBannerTitle": {
+    "message": "Info"
+  }
+}

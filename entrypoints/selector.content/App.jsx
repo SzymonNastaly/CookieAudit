@@ -1,5 +1,5 @@
 import { Button, Group, MantineProvider, px, Stack } from '@mantine/core'
-import { Notifications, notifications } from '@mantine/notifications'
+import { Notifications } from '@mantine/notifications'
 import {
   IconArrowDown,
   IconArrowUp,
@@ -340,9 +340,15 @@ export default () => {
       let domSelectorData = document.querySelector('#dom-selector-data')
       domSelectorData.close()
 
-        notifications.show({
-            title: 'Confirmed', message: 'Cookie banner was selected'
-        });
+      await browser.runtime.sendMessage({
+        msg: 'relay',
+        data: {
+          msg: 'popover',
+          title: browser.i18n.getMessage('selector_selectedBannerTitle'),
+          text: browser.i18n.getMessage('selector_selectedBannerText'),
+          color: 'blue',
+        },
+      })
 
         let selected = selectedDOMElementRef.current;
         reset();
@@ -466,14 +472,16 @@ export default () => {
                           className={'dom-selector-parent'}
                           onClick={handleSelectParent}
                           onMouseDown={handleSelectParent}
-                          onMouseUp={handleSelectParent}>Outer</Button>
+                          onMouseUp={handleSelectParent}>{browser.i18n.getMessage(
+                    'selector_outerBtn')}</Button>
                   <Button variant="default" size="xs"
                           leftSection={<IconArrowDown size={14}/>}
                           disabled={elementHistory.length === 0}
                           className={'dom-selector-parent'}
                           onClick={handleSelectChild}
                           onMouseDown={handleSelectChild}
-                          onMouseUp={handleSelectChild}>Inner</Button>
+                          onMouseUp={handleSelectChild}>{browser.i18n.getMessage(
+                    'selector_innerBtn')}</Button>
                 </Group>
                 <Group justify="center" grow
                        style={{ marginBottom: px(8) }}>
@@ -482,14 +490,16 @@ export default () => {
                           className={`dom-selector-closer`}
                           onClick={handleCancelBtn}
                           onMouseDown={handleCancelBtn}
-                          onMouseUp={handleCancelBtn}>Cancel</Button>
+                          onMouseUp={handleCancelBtn}>{browser.i18n.getMessage(
+                    'selector_cancelBtn')}</Button>
                 </Group>
                 <Group justify="center" grow>
                   <Button size="xs" variant="light" color="green"
                           leftSection={<IconCheck size={14}/>}
                           onClick={handleConfirm}
                           onMouseDown={handleConfirm}
-                          onMouseUp={handleConfirm}>Confirm</Button>
+                          onMouseUp={handleConfirm}>{browser.i18n.getMessage(
+                    'selector_confirmBtn')}</Button>
                 </Group>
               </dom-selector-data>
             </dialog>

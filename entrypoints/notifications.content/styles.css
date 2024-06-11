@@ -1,0 +1,76 @@
+#notification-popover, #notification-dialog {
+    /* Reset font properties */
+    font-family: Arial, sans-serif; /* Use a neutral, modern font */
+    font-size: 14px; /* Standard readable size */
+    font-style: normal; /* No italic */
+    font-weight: normal; /* No bold */
+    line-height: 1.5; /* Comfortable line spacing */
+    text-align: left; /* Align text to the left */
+    color: #333; /* Dark gray for good contrast and readability */
+    text-transform: none; /* No text case transformations */
+    text-decoration: none; /* No underlines or other text decorations */
+    letter-spacing: normal; /* Standard letter spacing */
+
+    /* Reset margin and padding for consistency */
+    margin: 0;
+    padding: 5px; /* Slightly more padding for a better visual */
+    border: none; /* No border for a cleaner look */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); /* More pronounced drop shadow for depth */
+    position: fixed; /* Fixed position to stay in place */
+    z-index: 10000; /* High z-index to ensure it stays on top */
+    top: 10%; /* Positioned slightly from the top for better visibility */
+    left: 50%; /* Center horizontally */
+    transform: translate(-50%, -10%); /* Adjusted position for true centering */
+    width: auto; /* Width adjusts to content */
+    max-width: 90%; /* Limit maximum width to maintain usability on small screens */
+    overflow: hidden; /* Hide any overflowing content */
+}
+
+#notification-popover #title, #notification-dialog #title {
+    margin: 2px;
+    font-size: 18px; /* Larger font size for the title */
+    font-weight: bold; /* Bold font weight for emphasis */
+}
+
+#notification-popover #text, #notification-dialog #text {
+    margin: 2px;
+    font-size: 14px; /* Standard font size for text */
+    font-weight: normal; /* Regular font weight */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+#notification-dialog {
+    display: none; /* Hide dialog when not in use */
+    animation: fadeIn 0.3s forwards; /* Animation for fading in */
+}
+
+#dialog-div {
+    border-left: 5px solid #f03e3e;
+    padding-left: 10px;
+}
+
+#popover-div {
+    border-left: 5px solid #1c7ed6;
+    padding-left: 10px;
+}
+
+#notification-dialog[open] {
+    display: block; /* Show dialog when open attribute is true */
+}
+
+#notification-dialog::backdrop {
+    opacity: 0;
+}
+
+#notification-popover {
+    background-color: #fff; /* Clean white background */
+}

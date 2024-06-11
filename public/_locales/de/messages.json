@@ -1,0 +1,53 @@
+{
+  "ext_description": {
+    "message": "Regelkonforme Nutzung von Cookies überprüfen."
+  },
+  "ext_name": {
+    "message": "Cookie Audit"
+  },
+  "popup_cancelScanBtn": {
+    "message": "Scan abbrechen"
+  },
+  "popup_download": {
+    "message": "Modelle für Bannererkennung werden heruntergeladen."
+  },
+  "popup_errorTitle": {
+    "message": "Fehler"
+  },
+  "popup_initialInstruction": {
+    "message": "Vor dem Start: öffnen Sie die Zielwebsite und schließen alle anderen Tabs/Browserfenster."
+  },
+  "popup_noNoticeBtn": {
+    "message": "Kein Cookie Banner"
+  },
+  "popup_skipSelection": {
+    "message": "Bitte wählen Sie den Cookie Banner aus. Falls es keinen gibt, überspringen Sie die Auswahl unten."
+  },
+  "popup_startScanBtn": {
+    "message": "Scan starten"
+  },
+  "popup_tooManyTabsText": {
+    "message": "Mehr als ein Tab ist geöffnet. Schließen Sie die anderen Tabs."
+  },
+  "popup_tooManyWindowsText": {
+    "message": "Mehr als ein Fenster dieses Browsers ist geöffnet. Bitte schließen sie die anderen Fenster."
+  },
+  "selector_cancelBtn": {
+    "message": "Abbrechen"
+  },
+  "selector_confirmBtn": {
+    "message": "Bestätigen"
+  },
+  "selector_innerBtn": {
+    "message": "Inneres"
+  },
+  "selector_outerBtn": {
+    "message": "Äußeres"
+  },
+  "selector_selectedBannerText": {
+    "message": "Der Cookiebanner wurde ausgewählt."
+  },
+  "selector_selectedBannerTitle": {
+    "message": "Info"
+  }
+}

@@ -18,14 +18,14 @@ import { STAGE2 } from '../modules/globals.js'
 
 /**
  * Retrieve Url of the active tab.
- * @returns {String} Url.
+ * @returns {Promise<String|null>} Url.
  */
 async function getURL() {
     let queryOptions = {active: true};
     // `tab` will either be a `tabs.Tab` instance or `undefined`.
     let [tab] = await browser.tabs.query(queryOptions);
     if (!tab || !tab.url) {
-        return undefined;
+        return null
     }
     return tab.url;
 }
@@ -64,7 +64,14 @@ export default function App() {
                     value: progress.purpose,
                 })
             }
-        })
+        });
+
+        (async () => {
+            const url = await getURL()
+            if (url == null || !url.startsWith('http')) {
+                setStartDisabled(true)
+            }
+        })()
 
         const unwatchScan = storage.watch('local:scan', (newScan, _) => {
             setScan(newScan);
@@ -101,9 +108,26 @@ export default function App() {
      * This function is called when a user clicks the start button. It creates a new empty scan object and stores it in the chrome storage.
      */
     async function startScan() {
-        const url = getURL();
-        if (!url) {
-            console.log('Open a website before starting a scan');
+        const tabs = await browser.tabs.query({})
+        let windows = new Set(tabs.map(tab => tab.windowId))
+
+        if (windows.size > 1) {
+            const tabs = await browser.tabs.query({ active: true })
+            await browser.tabs.sendMessage(tabs[0].id, {
+                msg: 'dialog',
+                title: browser.i18n.getMessage('popup_errorTitle'),
+                text: browser.i18n.getMessage('popup_tooManyWindowsText'),
+                color: 'red',
+            })
+            return
+        } else if (tabs.length > 1) {
+            const tabs = await browser.tabs.query({ active: true })
+            await browser.tabs.sendMessage(tabs[0].id, {
+                msg: 'dialog',
+                title: browser.i18n.getMessage('popup_errorTitle'),
+                text: browser.i18n.getMessage('popup_tooManyTabsText'),
+                color: 'red',
+            })
             return;
         }
 
@@ -153,31 +177,35 @@ export default function App() {
         <Center maw={800} p={20}>
             <Stack>
                 <Group justify="center">
-                    <Text>CookieAudit 2</Text>
+                    <Text>{browser.i18n.getMessage('ext_name')}</Text>
                 </Group>
                 <Group justify="center" grow>
                     {isStage(scan,STAGE2.NOT_STARTED) && (<Container>
-                        <Text>Open the target website</Text>
-                        <Text>Close all other tabs before starting a scan</Text>
-                        <Button variant="light" color="green"
-                                onClick={startScan} disabled={startDisabled}>Start
-                            Scan</Button>
+                        <Text>{browser.i18n.getMessage(
+                          'popup_initialInstruction')}</Text>
+                        <Group justify="center" grow>
+                            <Button variant="light" color="green"
+                                    onClick={startScan}
+                                    disabled={startDisabled}>{browser.i18n.getMessage(
+                              'popup_startScanBtn')}</Button>
+                        </Group>
                     </Container>)}
                     {isStage(scan,STAGE2.NOTICE_SELECTION) && (<Container>
-                        <Text>Please select the cookie notice.</Text>
-                        <Text>If there is no notice, skip the selection:</Text>
-                        <Button variant="light" color="orange" onClick={noNotice}>No Cookie Notice</Button>
-                    </Container>)}
-                    {isStage(scan,STAGE2.INTERACTION_WO_NOTICE) && (<Container>
-                        <Text>Please scroll through the website and click on a few links.</Text>
-                        <Button variant="light" color="orange" onClick={noNotice}>Finished Interaction</Button>
+                        <Text>{browser.i18n.getMessage(
+                          'popup_skipSelection')}</Text>
+                        <Button variant="light" color="orange"
+                                onClick={noNotice}>{browser.i18n.getMessage(
+                          'popup_noNoticeBtn')}</Button>
                     </Container>)}
                 </Group>
                 <Divider my="md" />
                 <Group justify="center" grow>
-                    {(purposeProgress.value < 100 || ieProgress.value < 100) &&
+                    {((purposeProgress.value > 0 && purposeProgress.value <
+                          100) ||
+                        (ieProgress.value > 0 && ieProgress.value < 100)) &&
                       (<Container>
-                          <Text>Downloading Data</Text>
+                          <Text>{browser.i18n.getMessage(
+                            'popup_download')}</Text>
                           <Progress
                             value={(purposeProgress.value + ieProgress.value) /
                               2}/>
@@ -185,7 +213,9 @@ export default function App() {
                       </Container>)}
                 </Group>
                 <Group justify="center" grow>
-                    <Button variant="light" color="red" onClick={cancelScan}>Cancel Scan</Button>
+                    <Button variant="light" color="red"
+                            onClick={cancelScan}>{browser.i18n.getMessage(
+                      'popup_cancelScanBtn')}</Button>
                 </Group>
             </Stack>
         </Center>
