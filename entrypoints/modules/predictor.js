@@ -12,14 +12,10 @@ import {getExtensionFile} from './globals.js';
 
 // initialize the forests
 var forests = [undefined, undefined, undefined, undefined];
-getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class0.json'),
-    'json', (f) => forests[0] = f);
-getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class1.json'),
-    'json', (f) => forests[1] = f);
-getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class2.json'),
-    'json', (f) => forests[2] = f);
-getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class3.json'),
-    'json', (f) => forests[3] = f);
+getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class0.json'), 'json', (f) => forests[0] = f);
+getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class1.json'), 'json', (f) => forests[1] = f);
+getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class2.json'), 'json', (f) => forests[2] = f);
+getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class3.json'), 'json', (f) => forests[3] = f);
 
 /**
  * Given a tree node and corresponding features, retrieve the weight from the decision tree.
@@ -72,24 +68,14 @@ const getForestScore = function(forest, features) {
  */
 export const predictClass = async function(features, nfactor) {
 
-  let existsUndefined = forests.reduce(
-      (total, f) => {return total || (f === undefined);}, false);
+  let existsUndefined = forests.reduce((total, f) => {return total || (f === undefined);}, false);
   if (existsUndefined) {
-    await getExtensionFile(
-        browser.runtime.getURL('ext_data/model/forest_class0.json'), 'json',
-        (f) => forests[0] = f);
-    await getExtensionFile(
-        browser.runtime.getURL('ext_data/model/forest_class1.json'), 'json',
-        (f) => forests[1] = f);
-    await getExtensionFile(
-        browser.runtime.getURL('ext_data/model/forest_class2.json'), 'json',
-        (f) => forests[2] = f);
-    await getExtensionFile(
-        browser.runtime.getURL('ext_data/model/forest_class3.json'), 'json',
-        (f) => forests[3] = f);
+    await getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class0.json'), 'json', (f) => forests[0] = f);
+    await getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class1.json'), 'json', (f) => forests[1] = f);
+    await getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class2.json'), 'json', (f) => forests[2] = f);
+    await getExtensionFile(browser.runtime.getURL('ext_data/model/forest_class3.json'), 'json', (f) => forests[3] = f);
 
-    let stillUndefined = forests.reduce(
-        (total, f) => {return total || (f === undefined);}, false);
+    let stillUndefined = forests.reduce((total, f) => {return total || (f === undefined);}, false);
     if (stillUndefined) {
       throw new Error('At least one internal forest model was undefined!');
     }
@@ -101,8 +87,7 @@ export const predictClass = async function(features, nfactor) {
     for (let i = 0; i < forests.length; i++) {
       classScores.push(Math.exp(await getForestScore(forests[i], features)));
     }
-    let totalScore = classScores.reduce((total, num) => {return total + num;},
-        0);
+    let totalScore = classScores.reduce((total, num) => {return total + num;}, 0);
     let probabilities = classScores.map((x) => {return x / totalScore;});
 
     // Bayes Decision

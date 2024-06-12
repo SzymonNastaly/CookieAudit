@@ -1,22 +1,12 @@
 import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
 import {Notifications} from '@mantine/notifications';
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconCheck,
-  IconX,
-} from '@tabler/icons-react';
+import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {useEffect, useRef, useState} from 'react';
 import './App.module.css';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import {storage} from 'wxt/storage';
-import {
-  extract_text_from_element,
-  get_clickable_elements,
-  getFullIframeIndex,
-  STAGE2,
-} from '../modules/globals.js';
+import {extract_text_from_element, get_clickable_elements, getFullIframeIndex, STAGE2} from '../modules/globals.js';
 import getSingleSelector from '../modules/optimal-select2/select.js';
 
 export default () => {
@@ -82,38 +72,19 @@ export default () => {
       left: (rect.left >= 0) ? rect.left + 'px' : '0px',
       bottom: (rect.bottom >= 0) ? rect.bottom + 'px' : '0px',
       width: rect.width + 'px',
-      height: (rect.top >= 0) ? rect.height + 'px' : Math.max(0,
-          rect.height - Math.abs(Number(rect.top))),
-      '--bt': parseInt(style.borderTopWidth, 10) >= 0
-          ? style.borderTopWidth
-          : '0px',
-      '--br': parseInt(style.borderRightWidth, 10) >= 0
-          ? style.borderRightWidth
-          : '0px',
-      '--bb': parseInt(style.borderBottomWidth, 10) >= 0
-          ? style.borderBottomWidth
-          : '0px',
-      '--bl': parseInt(style.borderBottomWidth, 10) >= 0
-          ? style.borderBottomWidth
-          : '0px',
+      height: (rect.top >= 0) ? rect.height + 'px' : Math.max(0, rect.height - Math.abs(Number(rect.top))),
+      '--bt': parseInt(style.borderTopWidth, 10) >= 0 ? style.borderTopWidth : '0px',
+      '--br': parseInt(style.borderRightWidth, 10) >= 0 ? style.borderRightWidth : '0px',
+      '--bb': parseInt(style.borderBottomWidth, 10) >= 0 ? style.borderBottomWidth : '0px',
+      '--bl': parseInt(style.borderBottomWidth, 10) >= 0 ? style.borderBottomWidth : '0px',
       '--mt': (parseInt(style.marginTop, 10) >= 0 ? style.marginTop : '0px'),
-      '--mr': (parseInt(style.marginRight, 10) >= 0
-          ? style.marginRight
-          : '0px'),
-      '--mb': (parseInt(style.marginBottom, 10) >= 0
-          ? style.marginBottom
-          : '0px'),
+      '--mr': (parseInt(style.marginRight, 10) >= 0 ? style.marginRight : '0px'),
+      '--mb': (parseInt(style.marginBottom, 10) >= 0 ? style.marginBottom : '0px'),
       '--ml': (parseInt(style.marginLeft, 10) >= 0 ? style.marginLeft : '0px'),
       '--pt': (parseInt(style.paddingTop, 10) >= 0 ? style.paddingTop : '0px'),
-      '--pr': (parseInt(style.paddingRight, 10) >= 0
-          ? style.paddingRight
-          : '0px'),
-      '--pb': (parseInt(style.paddingBottom, 10) >= 0
-          ? style.paddingBottom
-          : '0px'),
-      '--pl': (parseInt(style.paddingLeft, 10) >= 0
-          ? style.paddingLeft
-          : '0px'),
+      '--pr': (parseInt(style.paddingRight, 10) >= 0 ? style.paddingRight : '0px'),
+      '--pb': (parseInt(style.paddingBottom, 10) >= 0 ? style.paddingBottom : '0px'),
+      '--pl': (parseInt(style.paddingLeft, 10) >= 0 ? style.paddingLeft : '0px'),
     };
   }
 
@@ -141,8 +112,7 @@ export default () => {
           const element = queue.shift(); // Get and remove the first element from the queue
 
           // Check if the element is a <style> or <script> element
-          if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT' ||
-              element.nodeType !== 1) {
+          if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT' || element.nodeType !== 1) {
             continue; // Skip this element
           }
 
@@ -220,10 +190,9 @@ export default () => {
         let parentRect = parentEl.getBoundingClientRect();
 
         while (selected && parentEl &&
-        ((selectedRect.width === parentRect.width && selectedRect.height ===
-                parentRect.height) ||
-            (totalWidth(selectedRect) === totalWidth(parentRect) &&
-                totalHeight(selectedRect) === totalHeight(parentRect)))) {
+        ((selectedRect.width === parentRect.width && selectedRect.height === parentRect.height) ||
+            (totalWidth(selectedRect) === totalWidth(parentRect) && totalHeight(selectedRect) ===
+                totalHeight(parentRect)))) {
           selected = parentEl;
           parentEl = skipZeroAreaNodes(parentEl.parentElement);
           if (!parentEl) {
@@ -250,8 +219,7 @@ export default () => {
     let selected = document.elementFromPoint(e.clientX, e.clientY);
     selected = climbUpEquivalenceTree(selected);
     setSelectedDOMElement(selected);
-    if (!selected) console.error(
-        'Error: Failed to find the Selected element. Try to fetch again.');
+    if (!selected) console.error('Error: Failed to find the Selected element. Try to fetch again.');
 
     let domSelectorData = document.querySelector('#dom-selector-data');
     domSelectorData.showModal();
@@ -274,12 +242,10 @@ export default () => {
     if (selectParentHandled.current) return;
     selectParentHandled.current = true;
 
-    let startParent = skipZeroAreaNodes(
-        selectedDOMElementRef.current.parentElement);
+    let startParent = skipZeroAreaNodes(selectedDOMElementRef.current.parentElement);
     let selected = climbUpEquivalenceTree(startParent);
     if (selected) {
-      setElementHistory(
-          [...elementHistoryRef.current, selectedDOMElementRef.current]);
+      setElementHistory([...elementHistoryRef.current, selectedDOMElementRef.current]);
       //reset();
       setSelectedDOMElement(selected);
       // Updating the UI
@@ -299,11 +265,9 @@ export default () => {
     selectChildHandled.current = true;
 
     //if (!wrap.classList.contains('selected')) return;
-    if (!selectedDOMElementRef.current || elementHistoryRef.current.length ===
-        0) return;
+    if (!selectedDOMElementRef.current || elementHistoryRef.current.length === 0) return;
 
-    setSelectedDOMElement(
-        elementHistoryRef.current[elementHistoryRef.current.length - 1]); // set to last element in history
+    setSelectedDOMElement(elementHistoryRef.current[elementHistoryRef.current.length - 1]); // set to last element in history
     setElementHistory([...elementHistoryRef.current.slice(0, -1)]); // remove last element
 
     setTimeout(() => {
@@ -399,9 +363,7 @@ export default () => {
     let selection = {
       notice: {
         selector: getSingleSelector(selected), text: noticeText, label: null,
-      },
-      interactiveObjects: interactiveObjects,
-      iframeFullIndex: getFullIframeIndex(window),
+      }, interactiveObjects: interactiveObjects, iframeFullIndex: getFullIframeIndex(window),
     };
     console.log('selected element is: ', selected);
     setTimeout(() => {
@@ -418,8 +380,7 @@ export default () => {
     }
 
     if (sendResponseRef.current == null) {
-      throw new Error(
-          'No response handler defined in selector content script.');
+      throw new Error('No response handler defined in selector content script.');
     } else {
       sendResponseRef.current({msg: 'selected_notice'});
     }
@@ -453,12 +414,11 @@ export default () => {
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('keydown', handleKeydown);
 
-    const unwatchSelection = storage.watch('local:selection',
-        (newSelection, _) => {
-          if (newSelection.notice !== null) {
-            reset();
-          }
-        });
+    const unwatchSelection = storage.watch('local:selection', (newSelection, _) => {
+      if (newSelection.notice !== null) {
+        reset();
+      }
+    });
 
     return () => {
       browser.runtime.onMessage.removeListener(handleSelectorMessage);
@@ -477,15 +437,9 @@ export default () => {
     <Stack>
       <dom-selector
           popover="manual"
-          className={`${isSurfing
-              ? 'surfing'
-              : 'notSurfing'} ${selectedDOMElement
-              ? 'selected'
-              : 'notSelected'}`}
+          className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
           style={{
-            ...(selectedDOMElement
-                ? wrapStyle(selectedDOMElement, scrollY)
-                : wrapStyle(hoveringDOMElement, scrollY)),
+            ...(selectedDOMElement ? wrapStyle(selectedDOMElement, scrollY) : wrapStyle(hoveringDOMElement, scrollY)),
             pointerEvents: selectedDOMElement ? 'auto' : 'none',
             userSelect: selectedDOMElement ? 'auto' : 'none',
           }}>
@@ -498,21 +452,18 @@ export default () => {
               <Button variant="default" size="xs"
                       leftSection={<IconArrowUp size={14}/>}
                       disabled={!selectedDOMElementRef.current ||
-                          !skipZeroAreaNodes(
-                              selectedDOMElementRef.current.parentElement)}
+                          !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
                       className={'dom-selector-parent'}
                       onClick={handleSelectParent}
                       onMouseDown={handleSelectParent}
-                      onMouseUp={handleSelectParent}>{browser.i18n.getMessage(
-                  'selector_outerBtn')}</Button>
+                      onMouseUp={handleSelectParent}>{browser.i18n.getMessage('selector_outerBtn')}</Button>
               <Button variant="default" size="xs"
                       leftSection={<IconArrowDown size={14}/>}
                       disabled={elementHistory.length === 0}
                       className={'dom-selector-parent'}
                       onClick={handleSelectChild}
                       onMouseDown={handleSelectChild}
-                      onMouseUp={handleSelectChild}>{browser.i18n.getMessage(
-                  'selector_innerBtn')}</Button>
+                      onMouseUp={handleSelectChild}>{browser.i18n.getMessage('selector_innerBtn')}</Button>
             </Group>
             <Group justify="center" grow
                    style={{marginBottom: px(8)}}>
@@ -521,16 +472,14 @@ export default () => {
                       className={`dom-selector-closer`}
                       onClick={handleCancelBtn}
                       onMouseDown={handleCancelBtn}
-                      onMouseUp={handleCancelBtn}>{browser.i18n.getMessage(
-                  'selector_cancelBtn')}</Button>
+                      onMouseUp={handleCancelBtn}>{browser.i18n.getMessage('selector_cancelBtn')}</Button>
             </Group>
             <Group justify="center" grow>
               <Button size="xs" variant="light" color="green"
                       leftSection={<IconCheck size={14}/>}
                       onClick={handleConfirm}
                       onMouseDown={handleConfirm}
-                      onMouseUp={handleConfirm}>{browser.i18n.getMessage(
-                  'selector_confirmBtn')}</Button>
+                      onMouseUp={handleConfirm}>{browser.i18n.getMessage('selector_confirmBtn')}</Button>
             </Group>
           </dom-selector-data>
         </dialog>

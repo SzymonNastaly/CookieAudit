@@ -61,11 +61,7 @@ export const INITIAL_PROGRESS = Object.freeze({
   purpose: 0, purposeDownloading: false, ie: 0, ieDownloading: false,
 });
 export const NOTICE_STATUS = Object.freeze({
-  WRONG_FRAME: 0,
-  SUCCESS: 1,
-  NOTICE_STILL_OPEN: 2,
-  WRONG_SELECTOR: 3,
-  NOTICE_CLOSED: 4,
+  WRONG_FRAME: 0, SUCCESS: 1, NOTICE_STILL_OPEN: 2, WRONG_SELECTOR: 3, NOTICE_CLOSED: 4,
 });
 
 export const SECOND_LVL_STATUS = Object.freeze({
@@ -204,8 +200,7 @@ export function getFullIframeIndex(win) {
 
 export function extract_text_from_element(e, exclude_links = false) {
   let text = [];
-  if (element_is_hidden(e) ||
-      (exclude_links && (e.nodeName === 'A' || e.nodeName === 'BUTTON'))) {
+  if (element_is_hidden(e) || (exclude_links && (e.nodeName === 'A' || e.nodeName === 'BUTTON'))) {
     return text;
   }
   let cur_text = '';
@@ -276,9 +271,8 @@ export function element_is_hidden(e) {
   } catch (error) {
   }
   try {
-    is_hidden = (window.getComputedStyle(e).display === 'none' ||
-        window.getComputedStyle(e).visibility === 'hidden' || height === 0 ||
-        width === 0);
+    is_hidden = (window.getComputedStyle(e).display === 'none' || window.getComputedStyle(e).visibility === 'hidden' ||
+        height === 0 || width === 0);
   } catch (error) {
   }
   e.childNodes.forEach(function(item) {
@@ -290,10 +284,9 @@ export function element_is_hidden(e) {
 export function get_clickable_elements(parent) {
   let elements = [];
   for (let element of parent.getElementsByTagName('*')) {
-    if (!element_is_hidden(element) &&
-        ['DIV', 'SPAN', 'A', 'BUTTON', 'INPUT'].includes(element.tagName) &&
-        (element.tabIndex >= 0 || element.getAttribute('role') === 'button' ||
-            element.getAttribute('onclick') !== null)) {
+    if (!element_is_hidden(element) && ['DIV', 'SPAN', 'A', 'BUTTON', 'INPUT'].includes(element.tagName) &&
+        (element.tabIndex >= 0 || element.getAttribute('role') === 'button' || element.getAttribute('onclick') !==
+            null)) {
       elements.push(element);
     }
   }
@@ -319,8 +312,7 @@ export function get_clickable_elements(parent) {
  * @param {String} dtype        Type of the data. Examples: "json", "text", "binary"
  * @param {Function} callback   Callback function that will be executed as soon as the data is available, receives data as first argument.
  */
-export const getExtensionFile = async function(
-    url, dtype, callback, errorCallback = null) {
+export const getExtensionFile = async function(url, dtype, callback, errorCallback = null) {
   let res = await fetch(url);
   if (dtype === 'text') {
     callback(await res.text());
@@ -443,7 +435,6 @@ export const classStringToIndex = (classStr) => {
 
 // default configuration
 var defaultConfig = undefined;
-getExtensionFile(browser.runtime.getURL('ext_data/default_config.json'), 'json',
-    (df) => {
-      defaultConfig = df;
-    });
+getExtensionFile(browser.runtime.getURL('ext_data/default_config.json'), 'json', (df) => {
+  defaultConfig = df;
+});

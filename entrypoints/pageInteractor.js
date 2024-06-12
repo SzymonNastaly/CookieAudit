@@ -18,8 +18,7 @@ function isTrivialLink(currentUrl, linkUrl) {
   }
 
   // Check if the link is to the same page (ignoring hash and search)
-  return targetLocation.origin === currentLocation.origin &&
-      targetLocation.pathname === currentLocation.pathname;
+  return targetLocation.origin === currentLocation.origin && targetLocation.pathname === currentLocation.pathname;
 }
 
 export default defineUnlistedScript(async () => {
@@ -32,14 +31,12 @@ export default defineUnlistedScript(async () => {
   const currentUrl = scan.url;
   await storage.setItem('local:scan', scan);
   const currentDomain = getHostName(currentUrl);
-  const headerLinks = document.querySelectorAll(
-      'header a, .header a, .nav a, nav a, a');
+  const headerLinks = document.querySelectorAll('header a, .header a, .nav a, nav a, a');
 
   let interaction = await storage.getItem('local:interaction');
 
   for (const link of headerLinks) {
-    if (link.href && !interaction.visitedPages.includes(link.href) &&
-        getHostName(link.href) === currentDomain &&
+    if (link.href && !interaction.visitedPages.includes(link.href) && getHostName(link.href) === currentDomain &&
         !isTrivialLink(currentUrl, link.href)) {
       interaction.visitedPages.push(link.href);
       await storage.setItem('local:interaction', interaction);

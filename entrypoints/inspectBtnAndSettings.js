@@ -20,8 +20,7 @@ function isExternalAnchor(el) {
   if (el.tagName.toLowerCase() === 'a') {
     const anchorUrl = new URL(el.href);
     const currentFrameUrl = new URL(window.location.href);
-    if (anchorUrl.hostname !== currentFrameUrl.hostname ||
-        anchorUrl.pathname !== currentFrameUrl.pathname) return true;
+    if (anchorUrl.hostname !== currentFrameUrl.hostname || anchorUrl.pathname !== currentFrameUrl.pathname) return true;
   }
   return el.getAttribute('target') === '_blank';
 }
@@ -55,8 +54,7 @@ function noticeNotChanged(fp1, fp2) {
     return false;
   }
 
-  if (fp1.dimensions[0] !== fp2.dimensions[0] || fp1.dimensions[1] !==
-      fp2.dimensions[1]) {
+  if (fp1.dimensions[0] !== fp2.dimensions[0] || fp1.dimensions[1] !== fp2.dimensions[1]) {
     return false;
   }
 
@@ -79,18 +77,14 @@ export default defineUnlistedScript(async () => {
   //const frameIdx = selection.iframeFullIndex;
   //const selector = interaction.ie.selector;
 
-  if (selection.iframeFullIndex == null) throw new Error(
-      'frameIdx in clickNotice was null.');
-  if (interaction.ie.selector == null) throw new Error(
-      'selector in clickNotice was null.');
+  if (selection.iframeFullIndex == null) throw new Error('frameIdx in clickNotice was null.');
+  if (interaction.ie.selector == null) throw new Error('selector in clickNotice was null.');
 
   // if the current content script is not in the correct frame, abort
   if (selection.iframeFullIndex !== getFullIframeIndex(window)) return null;
 
   if (interaction.ie.selector.length !== 1) {
-    throw new Error(
-        `malformed query selector in secondLevelDiscovery ${JSON.stringify(
-            selector)}`);
+    throw new Error(`malformed query selector in secondLevelDiscovery ${JSON.stringify(selector)}`);
   }
 
   let fstLevelNotice = document.querySelector(selection.notice.selector);
@@ -99,9 +93,7 @@ export default defineUnlistedScript(async () => {
 
   if (isExternalAnchor(fstLevelNotice)) {
     return {
-      status: SECOND_LVL_STATUS.EXTERNAL_ANCHOR,
-      text: null,
-      interactiveObjects: null,
+      status: SECOND_LVL_STATUS.EXTERNAL_ANCHOR, text: null, interactiveObjects: null,
     };
   }
 
@@ -116,8 +108,8 @@ export default defineUnlistedScript(async () => {
   // check if selector for the cookie notice returns something
   let sndLevelNotice = document.querySelector(selection.notice.selector);
 
-  if (sndLevelNotice == null || !sndLevelNotice.checkVisibility() ||
-      element_is_hidden(sndLevelNotice) || isCovered(sndLevelNotice)) {
+  if (sndLevelNotice == null || !sndLevelNotice.checkVisibility() || element_is_hidden(sndLevelNotice) ||
+      isCovered(sndLevelNotice)) {
     // the first level notice does not exist anymore, thus something else must be the sndLevelNotice
     console.log('starting selector inside secondLevelDiscovery.js');
     return {

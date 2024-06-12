@@ -1,15 +1,4 @@
-import {
-  Badge,
-  Button,
-  Center,
-  Container,
-  Divider,
-  Group,
-  MantineProvider,
-  Progress,
-  Stack,
-  Text,
-} from '@mantine/core';
+import {Badge, Button, Center, Container, Divider, Group, MantineProvider, Progress, Stack, Text} from '@mantine/core';
 import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import '@mantine/core/styles.css';
@@ -33,10 +22,8 @@ async function getURL() {
 export default function App() {
   const [startDisabled, setStartDisabled] = useState(false);
 
-  const [ieProgress, setIeProgress] = useState(
-      {isDownloading: false, value: 0});
-  const [purposeProgress, setPurposeProgress] = useState(
-      {isDownloading: false, value: 0});
+  const [ieProgress, setIeProgress] = useState({isDownloading: false, value: 0});
+  const [purposeProgress, setPurposeProgress] = useState({isDownloading: false, value: 0});
 
   const [scan, _setScan] = useState(null);
   const scanRef = useRef(null);
@@ -56,12 +43,10 @@ export default function App() {
     storage.getItem('local:progress').then((progress) => {
       if (progress != null) {
         setIeProgress({
-          isDownloading: progress.ieDownloading,
-          value: progress.ie,
+          isDownloading: progress.ieDownloading, value: progress.ie,
         });
         setPurposeProgress({
-          isDownloading: progress.purposeDownloading,
-          value: progress.purpose,
+          isDownloading: progress.purposeDownloading, value: progress.purpose,
         });
       }
     });
@@ -76,19 +61,16 @@ export default function App() {
     const unwatchScan = storage.watch('local:scan', (newScan, _) => {
       setScan(newScan);
     });
-    const unwatchProgress = storage.watch('local:progress',
-        (newProgress, _) => {
-          if (newProgress != null) {
-            setIeProgress({
-              isDownloading: newProgress.ieDownloading,
-              value: newProgress.ie,
-            });
-            setPurposeProgress({
-              isDownloading: newProgress.purposeDownloading,
-              value: newProgress.purpose,
-            });
-          }
+    const unwatchProgress = storage.watch('local:progress', (newProgress, _) => {
+      if (newProgress != null) {
+        setIeProgress({
+          isDownloading: newProgress.ieDownloading, value: newProgress.ie,
         });
+        setPurposeProgress({
+          isDownloading: newProgress.purposeDownloading, value: newProgress.purpose,
+        });
+      }
+    });
 
     return () => {
       unwatchScan();
@@ -133,8 +115,7 @@ export default function App() {
 
     console.log('Starting scan...');
     const {msg} = await browser.runtime.sendMessage({msg: 'start_scan'});
-    if (msg !== 'ok') throw new Error(
-        'start_scan was not confirmed by background.js');
+    if (msg !== 'ok') throw new Error('start_scan was not confirmed by background.js');
 
     // close popup
     window.close();
@@ -142,16 +123,14 @@ export default function App() {
 
   async function noNotice() {
     const {msg} = await browser.runtime.sendMessage({msg: 'no_notice'});
-    if (msg !== 'ok') throw new Error(
-        'no_notice was not confirmed by background.js');
+    if (msg !== 'ok') throw new Error('no_notice was not confirmed by background.js');
   }
 
   async function cancelScan() {
     setStartDisabled(true);
     const response = await browser.runtime.sendMessage({msg: 'cancel_scan'});
     console.log('response after cancel_scan', response);
-    if (response.msg !== 'ok') throw new Error(
-        'cancel_scan was not confirmed by background.js');
+    if (response.msg !== 'ok') throw new Error('cancel_scan was not confirmed by background.js');
     setStartDisabled(false);
     // close popup
     window.close();
@@ -185,41 +164,32 @@ export default function App() {
         </Group>
         <Group justify="center" grow>
           {isStage(scan, STAGE2.NOT_STARTED) && (<Container>
-            <Text>{browser.i18n.getMessage(
-                'popup_initialInstruction')}</Text>
+            <Text>{browser.i18n.getMessage('popup_initialInstruction')}</Text>
             <Group justify="center" grow>
               <Button variant="light" color="green"
                       onClick={startScan}
-                      disabled={startDisabled}>{browser.i18n.getMessage(
-                  'popup_startScanBtn')}</Button>
+                      disabled={startDisabled}>{browser.i18n.getMessage('popup_startScanBtn')}</Button>
             </Group>
           </Container>)}
           {isStage(scan, STAGE2.NOTICE_SELECTION) && (<Container>
-            <Text>{browser.i18n.getMessage(
-                'popup_skipSelection')}</Text>
+            <Text>{browser.i18n.getMessage('popup_skipSelection')}</Text>
             <Button variant="light" color="orange"
-                    onClick={noNotice}>{browser.i18n.getMessage(
-                'popup_noNoticeBtn')}</Button>
+                    onClick={noNotice}>{browser.i18n.getMessage('popup_noNoticeBtn')}</Button>
           </Container>)}
         </Group>
         <Divider my="md"/>
         <Group justify="center" grow>
-          {((purposeProgress.value > 0 && purposeProgress.value <
-                      100) ||
-                  (ieProgress.value > 0 && ieProgress.value < 100)) &&
-              (<Container>
-                <Text>{browser.i18n.getMessage(
-                    'popup_download')}</Text>
-                <Progress
-                    value={(purposeProgress.value + ieProgress.value) /
-                        2}/>
-                <Divider my="md"/>
-              </Container>)}
+          {((purposeProgress.value > 0 && purposeProgress.value < 100) ||
+              (ieProgress.value > 0 && ieProgress.value < 100)) && (<Container>
+            <Text>{browser.i18n.getMessage('popup_download')}</Text>
+            <Progress
+                value={(purposeProgress.value + ieProgress.value) / 2}/>
+            <Divider my="md"/>
+          </Container>)}
         </Group>
         <Group justify="center" grow>
           <Button variant="light" color="red"
-                  onClick={cancelScan}>{browser.i18n.getMessage(
-              'popup_cancelScanBtn')}</Button>
+                  onClick={cancelScan}>{browser.i18n.getMessage('popup_cancelScanBtn')}</Button>
         </Group>
       </Stack>
     </Center>

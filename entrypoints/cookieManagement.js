@@ -39,8 +39,7 @@ export async function storeCookieResults(interactionState) {
   if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
     // analyze cookies after interaction with both notice and page
 
-    if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(
-        interaction?.ie?.label)) {
+    if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
       if (aaCookies.length > 0) {
         const entry = {
           ie: interaction.ie, aaCookies: aaCookies,
@@ -70,8 +69,7 @@ export async function storeCookieResults(interactionState) {
  * @returns {String}  string representing the cookie's key
  */
 function constructKeyFromCookie(cookieDat) {
-  return `${cookieDat.name};${urlToUniformDomain(
-      cookieDat.domain)};${cookieDat.path}`;
+  return `${cookieDat.name};${urlToUniformDomain(cookieDat.domain)};${cookieDat.path}`;
 }
 
 /**
@@ -128,10 +126,8 @@ async function updateFEInput(storedFEInput, rawCookie) {
   if (updateArray.length >= UPDATE_LIMIT) updateArray.shift();
 
   updateArray.push(updateStruct);
-  console.assert(updateArray.length > 1,
-      'Error: Performed an update without appending to the cookie?');
-  console.assert(updateArray.length <= UPDATE_LIMIT,
-      'Error: cookie update limit still exceeded!');
+  console.assert(updateArray.length > 1, 'Error: Performed an update without appending to the cookie?');
+  console.assert(updateArray.length <= UPDATE_LIMIT, 'Error: cookie update limit still exceeded!');
 
   return storedFEInput;
 }
@@ -158,8 +154,7 @@ async function insertCookieIntoStorage(serializedCookie) {
 export async function clearCookies() {
   // First, we delete the cookies from the browser
   async function removeCookie(cookie) {
-    let url = 'http' + (cookie.secure ? 's' : '') + '://' + cookie.domain +
-        cookie.path;
+    let url = 'http' + (cookie.secure ? 's' : '') + '://' + cookie.domain + cookie.path;
     await browser.cookies.remove({url: url, name: cookie.name});
   }
 
@@ -171,9 +166,7 @@ export async function clearCookies() {
 
   const tabs = await browser.tabs.query({active: true});
   await browser.scripting.executeScript({
-    target: {tabId: tabs[0].id, allFrames: true},
-    injectImmediately: true,
-    func: (() => {
+    target: {tabId: tabs[0].id, allFrames: true}, injectImmediately: true, func: (() => {
       window.localStorage.clear();
       window.sessionStorage.clear();
     }),
@@ -254,13 +247,11 @@ async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
     // Update timestamp and label of the stored cookie
     serializedCookie['current_label'] = clabel;
     serializedCookie['label_ts'] = Date.now();
-    console.debug('Perform Prediction: Cookie (%s;%s;%s) receives label (%s)',
-        newCookie.name, newCookie.domain, newCookie.path,
-        classIndexToString(clabel));
+    console.debug('Perform Prediction: Cookie (%s;%s;%s) receives label (%s)', newCookie.name, newCookie.domain,
+        newCookie.path, classIndexToString(clabel));
   } else {
-    console.debug('Skip Prediction: Cookie (%s;%s;%s) with label (%s)',
-        newCookie.name, newCookie.domain, newCookie.path,
-        classIndexToString(clabel));
+    console.debug('Skip Prediction: Cookie (%s;%s;%s) with label (%s)', newCookie.name, newCookie.domain,
+        newCookie.path, classIndexToString(clabel));
   }
 
   // If consent is given, store the cookie again.

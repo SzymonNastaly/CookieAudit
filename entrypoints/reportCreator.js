@@ -11,36 +11,29 @@ export default defineUnlistedScript(async () => {
   if (scan.aaCookiesAfterClose.length > 0) {
     cookiesAfterClose = scan.aaCookiesAfterClose[0].aaCookies.map(entry => {
       return [
-        classIndexToString(entry.current_label),
-        entry.domain,
-        entry.name];
+        classIndexToString(entry.current_label), entry.domain, entry.name];
     });
   }
   let aaCookiesAfterReject = [];
   if (scan.aaCookiesAfterReject.length > 0) {
     aaCookiesAfterReject = scan.aaCookiesAfterReject[0].aaCookies.map(entry => {
       return [
-        classIndexToString(entry.current_label),
-        entry.domain,
-        entry.name];
+        classIndexToString(entry.current_label), entry.domain, entry.name];
     });
   }
   let aaCookiesAfterSave = [];
   if (scan.aaCookiesAfterSave.length > 0) {
     aaCookiesAfterSave = scan.aaCookiesAfterSave[0].aaCookies.map(entry => {
       return [
-        classIndexToString(entry.current_label),
-        entry.domain,
-        entry.name];
+        classIndexToString(entry.current_label), entry.domain, entry.name];
     });
   }
   let aaCookiesWONoticeInteraction = [];
   if (scan.aaCookiesWONoticeInteraction.length > 0) {
-    aaCookiesWONoticeInteraction = scan.aaCookiesWONoticeInteraction.map(
-        entry => {
-          return [
-            classIndexToString(entry.current_label), entry.domain, entry.name];
-        });
+    aaCookiesWONoticeInteraction = scan.aaCookiesWONoticeInteraction.map(entry => {
+      return [
+        classIndexToString(entry.current_label), entry.domain, entry.name];
+    });
   }
   pdfMake.vfs = pdfFonts.default;
 
@@ -57,11 +50,9 @@ export default defineUnlistedScript(async () => {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
-              {text: 'Class', style: 'tableHeader'},
-              {text: 'Domain', style: 'tableHeader'},
-              {
-                text: 'Name', style: 'tableHeader',
-              }], ...cookiesAfterClose],
+              {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
+              text: 'Name', style: 'tableHeader',
+            }], ...cookiesAfterClose],
         },
       }, {
         text: 'Analytics and Advertising Cookies: Reject', style: 'subheader',
@@ -69,11 +60,9 @@ export default defineUnlistedScript(async () => {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
-              {text: 'Class', style: 'tableHeader'},
-              {text: 'Domain', style: 'tableHeader'},
-              {
-                text: 'Name', style: 'tableHeader',
-              }], ...aaCookiesAfterReject],
+              {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
+              text: 'Name', style: 'tableHeader',
+            }], ...aaCookiesAfterReject],
         },
       }, {
         text: 'Analytics and Advertising Cookies: Save', style: 'subheader',
@@ -81,24 +70,19 @@ export default defineUnlistedScript(async () => {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
-              {text: 'Class', style: 'tableHeader'},
-              {text: 'Domain', style: 'tableHeader'},
-              {
-                text: 'Name', style: 'tableHeader',
-              }], ...aaCookiesAfterSave],
+              {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
+              text: 'Name', style: 'tableHeader',
+            }], ...aaCookiesAfterSave],
         },
       }, {
-        text: 'Analytics and Advertising Cookies: Ignoring the Cookie Notice',
-        style: 'subheader',
+        text: 'Analytics and Advertising Cookies: Ignoring the Cookie Notice', style: 'subheader',
       }, {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
-              {text: 'Class', style: 'tableHeader'},
-              {text: 'Domain', style: 'tableHeader'},
-              {
-                text: 'Name', style: 'tableHeader',
-              }], ...aaCookiesWONoticeInteraction],
+              {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
+              text: 'Name', style: 'tableHeader',
+            }], ...aaCookiesWONoticeInteraction],
         },
       }], styles: {
       header: {

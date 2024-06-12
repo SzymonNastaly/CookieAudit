@@ -16,10 +16,7 @@ export default defineContentScript({
   async main(ctx) {
     browser.runtime.onMessage.addListener(handleMountMessage);
     const ui = createIntegratedUi(ctx, {
-      name: 'selector-ui',
-      position: 'inline',
-      anchor: 'body',
-      onMount: (container) => {
+      name: 'selector-ui', position: 'inline', anchor: 'body', onMount: (container) => {
         // Container is a body, and React warns when creating a root on the body, so create a wrapper div
         const app = document.createElement('div');
         container.append(app);
@@ -28,8 +25,7 @@ export default defineContentScript({
         const root = ReactDOM.createRoot(app);
         root.render(<App/>);
         return root;
-      },
-      onRemove: (root) => {
+      }, onRemove: (root) => {
         // Unmount the root when the UI is removed
         root?.unmount();
       },

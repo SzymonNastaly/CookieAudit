@@ -1,10 +1,6 @@
 import {env, pipeline} from '@xenova/transformers';
 import {storage} from 'wxt/storage';
-import {
-  clearCookies,
-  cookieListener,
-  storeCookieResults,
-} from './cookieManagement.js';
+import {clearCookies, cookieListener, storeCookieResults} from './cookieManagement.js';
 import {
   awaitNoDOMChanges,
   INTERACTION_STATE,
@@ -48,10 +44,9 @@ export default defineBackground({
        */
       static async getInstance(quantized = false) {
         if (this.instance === null) {
-          this.instance = pipeline('text-classification',
-              'snastal/purpose_detection_model', {
-                quantized: quantized, progress_callback: purposeProgress,
-              });
+          this.instance = pipeline('text-classification', 'snastal/purpose_detection_model', {
+            quantized: quantized, progress_callback: purposeProgress,
+          });
         }
         let progress = await storage.getItem('local:progress');
         progress.purpose = 100;
@@ -73,8 +68,7 @@ export default defineBackground({
        */
       static async getInstance(quantized = false) {
         if (this.instance === null) {
-          this.instance = pipeline('text-classification',
-              'snastal/interactive_elements_model',
+          this.instance = pipeline('text-classification', 'snastal/interactive_elements_model',
               {quantized: quantized, progress_callback: ieProgress});
         }
         let progress = await storage.getItem('local:progress');
@@ -88,18 +82,14 @@ export default defineBackground({
     async function interactWithPage(tabs) {
       for (let i = 0; i < PAGE_COUNT; i++) {
         let pageRet = await browser.scripting.executeScript({
-          target: {tabId: tabs[0].id},
-          files: ['pageInteractor.js'],
-          injectImmediately: true,
+          target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true,
         });
         let nextUrl = pageRet[0].result;
         if (nextUrl != null) {
           await updateTabAndWait(tabs[0].id, nextUrl);
           // await delay(4000);
           await browser.scripting.executeScript({
-            target: {tabId: tabs[0].id, allFrames: true},
-            func: awaitNoDOMChanges,
-            injectImmediately: true,
+            target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
         }
       }
@@ -129,20 +119,15 @@ export default defineBackground({
           scan['url'] = tabs[0].url;
           await storage.setItem('local:scan', scan);
           scan = null;
-          const mountResponse = await browser.tabs.sendMessage(tabs[0].id,
-              {msg: 'mount_select'});
+          const mountResponse = await browser.tabs.sendMessage(tabs[0].id, {msg: 'mount_select'});
           console.log('mountResponse', mountResponse);
-          if (mountResponse?.msg !== 'ok') throw new Error(
-              'mount_select not confirmed by content script');
-          const response = await browser.tabs.sendMessage(tabs[0].id,
-              {msg: 'start_select'});
-          if (response?.msg !== 'selected_notice') throw new Error(
-              'start_select not confirmed by selector');
+          if (mountResponse?.msg !== 'ok') throw new Error('mount_select not confirmed by content script');
+          const response = await browser.tabs.sendMessage(tabs[0].id, {msg: 'start_select'});
+          if (response?.msg !== 'selected_notice') throw new Error('start_select not confirmed by selector');
 
           // getting first layer notice selection
           let selection = await storage.getItem('local:selection');
-          if (selection == null) throw new Error(
-              'local:selection should be set');
+          if (selection == null) throw new Error('local:selection should be set');
 
           scan = await storage.getItem('local:scan');
           scan['noticeDetected'] = true;
@@ -155,10 +140,8 @@ export default defineBackground({
           // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
           env.backends.onnx.wasm.numThreads = 1;
 
-          let purposeClassifier = await PurposePipelineSingleton.getInstance(
-              USE_QUANTIZED);
-          let purposeDeclared = await translateAndGetPurposeDeclared(
-              purposeClassifier, selection.notice.text);
+          let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
+          let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, selection.notice.text);
           if (purposeDeclared) {
             selection.notice.label = 1;
           } else {
@@ -169,16 +152,14 @@ export default defineBackground({
           await storage.setItem('local:scan', scan);
           scan = null;
 
-          let ieClassifier = await IEPipelineSingleton.getInstance(
-              USE_QUANTIZED);
+          let ieClassifier = await IEPipelineSingleton.getInstance(USE_QUANTIZED);
           if (ieClassifier == null) throw new Error('IE Classifier was null');
 
-          const translatedTexts = await Promise.all(
-              selection.interactiveObjects.map(async obj => {
-                let text = obj.text;
-                let res = await translateToEnglish(text);
-                return res.resultText;
-              }));
+          const translatedTexts = await Promise.all(selection.interactiveObjects.map(async obj => {
+            let text = obj.text;
+            let res = await translateToEnglish(text);
+            return res.resultText;
+          }));
           const labels = (await ieClassifier(translatedTexts)).map(res => {
             return getIELabel(res);
           });
@@ -200,16 +181,14 @@ export default defineBackground({
             let obj = selection.interactiveObjects[i];
             interactiveElements[obj.label].push(obj);
           }
-          console.log('interactiveElements on first layer: ',
-              interactiveElements);
+          console.log('interactiveElements on first layer: ', interactiveElements);
 
           scan = await storage.getItem('local:scan');
           scan['stage2'] = STAGE2.NOTICE_INTERACTION;
           scan['interactiveElements'] = interactiveElements;
-          scan['rejectDetected'] = (interactiveElements[Purpose.Reject].length >
-              0);
-          scan['closeSaveDetected'] = (interactiveElements[Purpose.Close].length >
-              0) || (interactiveElements[Purpose.SaveSettings].length > 0);
+          scan['rejectDetected'] = (interactiveElements[Purpose.Reject].length > 0);
+          scan['closeSaveDetected'] = (interactiveElements[Purpose.Close].length > 0) ||
+              (interactiveElements[Purpose.SaveSettings].length > 0);
           await storage.setItem('local:scan', scan);
           scan = null;
 
@@ -225,8 +204,7 @@ export default defineBackground({
             ieToInteract.push(iElement);
           }
 
-          console.log('interactiveElements[Purpose.Settings]',
-              interactiveElements[Purpose.Settings]);
+          console.log('interactiveElements[Purpose.Settings]', interactiveElements[Purpose.Settings]);
           // if there are one or multiple setting buttons,
           // we have to inspect if there is a relevant second level
           let twoLevelInteractiveElements = {};
@@ -244,8 +222,7 @@ export default defineBackground({
             ieToSndLevel = interactiveElements[Purpose.Settings];
           } else {
             // we remove anchor tags as they often open a new page
-            let filteredOther = interactiveElements[Purpose.Other].filter(
-                obj => obj.tagName.toLowerCase() !== 'a');
+            let filteredOther = interactiveElements[Purpose.Other].filter(obj => obj.tagName.toLowerCase() !== 'a');
             // we sort such
             // that the buttons on the bottom left are first in the list
             let sortedOther = filteredOther.sort((a, b) => {
@@ -269,17 +246,11 @@ export default defineBackground({
                 files: ['secondLevelDiscovery.js'],
                 injectImmediately: true
             });*/
-            console.log(
-                `FIRST time before awaitNoDOMChanges ${new Date().getTime() /
-                1000}`);
+            console.log(`FIRST time before awaitNoDOMChanges ${new Date().getTime() / 1000}`);
             await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id, allFrames: true},
-              func: awaitNoDOMChanges,
-              injectImmediately: true,
+              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
             });
-            console.log(
-                `SECOND time before awaitNoDOMChanges ${new Date().getTime() /
-                1000}`);
+            console.log(`SECOND time before awaitNoDOMChanges ${new Date().getTime() / 1000}`);
 
             const inspectRet = await browser.scripting.executeScript({
               target: {tabId: tabs[0].id, allFrames: true},
@@ -290,43 +261,34 @@ export default defineBackground({
             let sndLevelNoticeText, sndLevelIntObjs;
             for (let frameRet of inspectRet) {
               let inspectResult = frameRet.result;
-              if (inspectResult != null && inspectResult.status ===
-                  SECOND_LVL_STATUS.SAME_NOTICE) {
+              if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.SAME_NOTICE) {
                 console.log('determined SAME_NOTICE');
                 ({
                   sndLevelNoticeText, sndLevelIntObjs,
-                } = await processSelectedSettings(tabs, frameRet, ieClassifier,
-                    twoLevelInteractiveElements, iElement, USE_QUANTIZED));
+                } = await processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
+                    USE_QUANTIZED));
                 break;
-              } else if (inspectResult != null && inspectResult.status ===
-                  SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
+              } else if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
                 console.log('determined EXTERNAL_ANCHOR');
-                console.log(
-                    'skipping a link in first layer that leads to external site');
+                console.log('skipping a link in first layer that leads to external site');
                 break;
-              } else if (inspectResult != null && inspectResult.status ===
-                  SECOND_LVL_STATUS.NEW_NOTICE) {
+              } else if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.NEW_NOTICE) {
                 console.log('determined NEW_NOTICE');
                 let scan = await storage.getItem('local:scan');
                 scan.stage2 = STAGE2.SECOND_SELECTION;
                 await storage.setItem('local:scan', scan);
-                const mountResponse = await browser.tabs.sendMessage(tabs[0].id,
-                    {msg: 'mount_select'});
-                if (mountResponse?.msg !== 'ok') throw new Error(
-                    'mount_select not confirmed by content script');
-                const response = await browser.tabs.sendMessage(tabs[0].id,
-                    {msg: 'start_select'});
-                if (response?.msg !== 'selected_notice') throw new Error(
-                    'start_select not confirmed by selector');
+                const mountResponse = await browser.tabs.sendMessage(tabs[0].id, {msg: 'mount_select'});
+                if (mountResponse?.msg !== 'ok') throw new Error('mount_select not confirmed by content script');
+                const response = await browser.tabs.sendMessage(tabs[0].id, {msg: 'start_select'});
+                if (response?.msg !== 'selected_notice') throw new Error('start_select not confirmed by selector');
 
-                let secondSelections = await storage.getItem(
-                    'local:second_selections');
-                if (secondSelections == null || secondSelections.length ===
-                    0) throw new Error('local:second_selections should be set');
+                let secondSelections = await storage.getItem('local:second_selections');
+                if (secondSelections == null || secondSelections.length === 0) throw new Error(
+                    'local:second_selections should be set');
                 ({
                   sndLevelNoticeText, sndLevelIntObjs,
-                } = await processSelectedSettings(tabs, frameRet, ieClassifier,
-                    twoLevelInteractiveElements, iElement, USE_QUANTIZED));
+                } = await processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
+                    USE_QUANTIZED));
                 break;
               }
             }
@@ -367,14 +329,11 @@ export default defineBackground({
             scan = null;
             await storage.setItem('local:interaction', interaction);
 
-            console.log('starting noticeInteractor for interaction: ',
-                interaction);
+            console.log('starting noticeInteractor for interaction: ', interaction);
 
             await waitStableFrames(tabs[0].id);
             await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id, allFrames: true},
-              func: awaitNoDOMChanges,
-              injectImmediately: true,
+              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
             });
 
             let wasSuccess = await noticeInteractAndWait(tabs[0].id);
@@ -413,22 +372,16 @@ export default defineBackground({
           await interactWithPage(tabs);
           // await delay(2000);
           await browser.scripting.executeScript({
-            target: {tabId: tabs[0].id, allFrames: true},
-            func: awaitNoDOMChanges,
-            injectImmediately: true,
+            target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
           await storeCookieResults(INTERACTION_STATE.PAGE_WO_NOTICE);
           // await delay(2000);
           await browser.scripting.executeScript({
-            target: {tabId: tabs[0].id, allFrames: true},
-            func: awaitNoDOMChanges,
-            injectImmediately: true,
+            target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
 
           await browser.scripting.executeScript({
-            target: {tabId: tabs[0].id},
-            files: ['reportCreator.js'],
-            injectImmediately: true,
+            target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true,
           });
 
         })();
@@ -437,10 +390,8 @@ export default defineBackground({
         // TODO finish this and make it jump to the same handler that interacts with the page (without cookie notice) after cookie notice interaction
         (async () => {
           const tabs = await browser.tabs.query({active: true});
-          const response = await browser.tabs.sendMessage(tabs[0].id,
-              {msg: 'cancel_select'});
-          if (response?.msg !== 'ok') throw new Error(
-              'cancel_select not confirmed');
+          const response = await browser.tabs.sendMessage(tabs[0].id, {msg: 'cancel_select'});
+          if (response?.msg !== 'ok') throw new Error('cancel_select not confirmed');
           let scan = await storage.getItem('local:scan');
           scan.stage2 = STAGE2.INTERACTION_WO_NOTICE;
           await storage.setItem('local:scan', scan);
@@ -507,11 +458,7 @@ export default defineBackground({
       /** @type {TranslationResponse} */
       const body = await response.json();
       const result = {
-        resultText: '',
-        sourceLanguage: '',
-        percentage: 0,
-        isError: false,
-        errorMessage: '',
+        resultText: '', sourceLanguage: '', percentage: 0, isError: false, errorMessage: '',
       };
 
       result.sourceLanguage = body.src;
@@ -543,8 +490,7 @@ export default defineBackground({
       return resultData;*/
     }
 
-    async function translateAndGetPurposeDeclared(
-        purposeClassifier, untranslatedText) {
+    async function translateAndGetPurposeDeclared(purposeClassifier, untranslatedText) {
       // translation of selection elements
       let translationResponse = await translateToEnglish(untranslatedText);
       let translatedNoticeText = translationResponse.resultText;
@@ -553,12 +499,10 @@ export default defineBackground({
       const segmentIter = segmenterEn.segment(translatedNoticeText);
       const sentences = Array.from(segmentIter).map(obj => obj.segment);
 
-      if (purposeClassifier == null) throw new Error(
-          'Purpose Classifier is null');
-      const purposeClassifications = (await purposeClassifier(sentences)).map(
-          res => {
-            return parseInt(res.label);
-          });
+      if (purposeClassifier == null) throw new Error('Purpose Classifier is null');
+      const purposeClassifications = (await purposeClassifier(sentences)).map(res => {
+        return parseInt(res.label);
+      });
       purposeClassifier = null;
       return Math.max(...purposeClassifications) > 0;
     }
@@ -573,24 +517,21 @@ export default defineBackground({
      * @param {boolean} useQuantized
      * @return {Promise<{sndLevelIntObjs: (*|[]|null), sndLevelNoticeText: *}>}
      */
-    async function processSelectedSettings(tabs, frameRet, ieClassifier,
-        twoLevelInteractiveElements, iElement, useQuantized) {
+    async function processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
+        useQuantized) {
       const secondSelections = await storage.getItem('local:second_selections');
       let result = {text: null, interactiveObjects: null};
       if (secondSelections.length > 0) {
         result.text = secondSelections[secondSelections.length - 1].notice.text;
-        result.interactiveObjects = secondSelections[secondSelections.length -
-        1].interactiveObjects;
+        result.interactiveObjects = secondSelections[secondSelections.length - 1].interactiveObjects;
       }
 
       let sndLevelNoticeText = result.text;
       let sndLevelIntObjs = result.interactiveObjects;
 
       // run analysis on sndLevelNoticeText, probably best to do create a new function
-      let purposeClassifier = await PurposePipelineSingleton.getInstance(
-          useQuantized);
-      let purposeDeclared = await translateAndGetPurposeDeclared(
-          purposeClassifier, sndLevelNoticeText);
+      let purposeClassifier = await PurposePipelineSingleton.getInstance(useQuantized);
+      let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, sndLevelNoticeText);
       console.log(`purposeDeclared on second level: ${purposeDeclared}`);
       if (purposeDeclared) {
         let selection = await storage.getItem('local:selection');
@@ -602,12 +543,11 @@ export default defineBackground({
       }
 
       // run analysis on sndLevelIntObjs
-      let sndLevelTranslatedTexts = await Promise.all(
-          sndLevelIntObjs.map(async obj => {
-            let text = obj.text;
-            let res = await translateToEnglish(text);
-            return res.resultText;
-          }));
+      let sndLevelTranslatedTexts = await Promise.all(sndLevelIntObjs.map(async obj => {
+        let text = obj.text;
+        let res = await translateToEnglish(text);
+        return res.resultText;
+      }));
       const labels = (await ieClassifier(sndLevelTranslatedTexts)).map(res => {
         return getIELabel(res);
       });
@@ -629,22 +569,17 @@ export default defineBackground({
     async function noticeInteractAndWait(tabId) {
       let statusCodes, wasSuccess;
       let ret = await browser.scripting.executeScript({
-        target: {tabId: tabId, allFrames: true},
-        files: ['noticeInteractor.js'],
-        injectImmediately: true,
+        target: {tabId: tabId, allFrames: true}, files: ['noticeInteractor.js'], injectImmediately: true,
       });
       statusCodes = ret.map(obj => obj.result);
       await waitStableFrames(tabId);
       await browser.scripting.executeScript({
-        target: {tabId: tabId, allFrames: true},
-        func: awaitNoDOMChanges,
-        injectImmediately: true,
+        target: {tabId: tabId, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
       });
 
       if (statusCodes.some(code => code === NOTICE_STATUS.SUCCESS)) {
         wasSuccess = true;
-      } else if (statusCodes.some(
-          code => code === NOTICE_STATUS.WRONG_SELECTOR)) {
+      } else if (statusCodes.some(code => code === NOTICE_STATUS.WRONG_SELECTOR)) {
         console.log('WRONG_SELECTOR');
         wasSuccess = false;
         // get the user to select the different cookie notice

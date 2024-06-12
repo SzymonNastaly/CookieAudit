@@ -11,18 +11,14 @@ export default defineUnlistedScript(async () => {
     return notice.checkVisibility();
   }
 
-  console.log(`inside noticeStillOpen checking ${JSON.stringify(
-      selection)} and ${JSON.stringify(secondSelections)}`);
+  console.log(`inside noticeStillOpen checking ${JSON.stringify(selection)} and ${JSON.stringify(secondSelections)}`);
 
-  if (selection?.notice?.selector == null) throw new Error(
-      'notice selector was null in noticeStillOpen.js');
+  if (selection?.notice?.selector == null) throw new Error('notice selector was null in noticeStillOpen.js');
 
-  if (noticeStillOpen(
-      selection.notice.selector)) return NOTICE_STATUS.NOTICE_STILL_OPEN;
+  if (noticeStillOpen(selection.notice.selector)) return NOTICE_STATUS.NOTICE_STILL_OPEN;
   for (let i = 0; i < secondSelections.length; i++) {
     const layerSelection = secondSelections[i];
-    if (noticeStillOpen(
-        layerSelection.notice.selector)) return NOTICE_STATUS.NOTICE_STILL_OPEN;
+    if (noticeStillOpen(layerSelection.notice.selector)) return NOTICE_STATUS.NOTICE_STILL_OPEN;
   }
   return NOTICE_STATUS.NOTICE_CLOSED;
 });
