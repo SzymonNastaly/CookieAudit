@@ -53,6 +53,9 @@ export const INTERACTION_STATE = Object.freeze({
 export const PAGE_COUNT = 1;
 export const MAX_OTHER_BTN_COUNT = 2;
 
+/**
+ * @type {Readonly<Selection>}
+ */
 export const INITIAL_SELECTION = Object.freeze({
   notice: null, interactiveObjects: [], iframeFullIndex: null,
 });
@@ -194,20 +197,24 @@ export function updateTabAndWait(tabId, url) {
 /**
  *
  * @param {HTMLElement} selected
- * @return {{interactiveObjects: *[], iframeFullIndex: string, notice: {selector: (string|*), text: string, label: null}}}
+ * @return {{interactiveObjects: InteractiveObjects, iframeFullIndex: string, notice: Notice}}
  */
 export function selectionFromSelectedNotice(selected) {
   let noticeText = extract_text_from_element(selected, true).
       join('\n').
       replace(/\s+/g, ' ');
   const interactiveElements = get_clickable_elements(selected);
+  /**
+   * @type {InteractiveObjects}
+   */
   let interactiveObjects = [];
   for (let i = 0; i < interactiveElements.length; i++) {
     let boundingClientRect = interactiveElements[i].getBoundingClientRect();
     interactiveObjects.push({
       selector: [getSingleSelector(interactiveElements[i])],
-      text: extract_text_from_element(interactiveElements[i]).
-          join(' '),
+      text: [
+        extract_text_from_element(interactiveElements[i]).
+            join(' ')],
       tagName: (interactiveElements[i].tagName.toLowerCase()),
       x: boundingClientRect.x,
       y: boundingClientRect.y,

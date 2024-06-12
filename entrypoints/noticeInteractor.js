@@ -2,7 +2,6 @@ import {NOTICE_STATUS} from './modules/globals.js';
 
 export default defineUnlistedScript(async () => {
   const interaction = await storage.getItem('local:interaction');
-  const selection = await storage.getItem('local:selection');
   //const frameIdx = selection.iframeFullIndex;
   const selector = interaction.ie.selector;
 

@@ -73,6 +73,9 @@ function noticeNotChanged(fp1, fp2) {
 export default defineUnlistedScript(async () => {
   // START OF FIRST PART = inspectButtonAndNewNotice
   const interaction = await storage.getItem('local:interaction');
+  /**
+   * @type {Selection}
+   */
   const selection = await storage.getItem('local:selection');
   //const frameIdx = selection.iframeFullIndex;
   //const selector = interaction.ie.selector;
@@ -84,7 +87,7 @@ export default defineUnlistedScript(async () => {
   if (selection.iframeFullIndex !== getFullIframeIndex(window)) return null;
 
   if (interaction.ie.selector.length !== 1) {
-    throw new Error(`malformed query selector in secondLevelDiscovery ${JSON.stringify(selector)}`);
+    throw new Error(`malformed query selector in secondLevelDiscovery ${JSON.stringify(interaction.ie.selector)}`);
   }
 
   let fstLevelNotice = document.querySelector(selection.notice.selector);

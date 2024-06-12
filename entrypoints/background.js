@@ -126,6 +126,9 @@ export default defineBackground({
           if (response?.msg !== 'selected_notice') throw new Error('start_select not confirmed by selector');
 
           // getting first layer notice selection
+          /**
+           * @type {Selection}
+           */
           let selection = await storage.getItem('local:selection');
           if (selection == null) throw new Error('local:selection should be set');
 
@@ -275,6 +278,9 @@ export default defineBackground({
                 const response = await browser.tabs.sendMessage(tabs[0].id, {msg: 'start_select'});
                 if (response?.msg !== 'selected_notice') throw new Error('start_select not confirmed by selector');
 
+                /**
+                 * @type {Selection[]}
+                 */
                 let secondSelections = await storage.getItem('local:second_selections');
                 if (secondSelections == null || secondSelections.length === 0) throw new Error(
                     'local:second_selections should be set');
@@ -513,6 +519,9 @@ export default defineBackground({
      */
     async function processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
         useQuantized, sameNotice) {
+      /**
+       * @type {Selection[]}
+       */
       const secondSelections = await storage.getItem('local:second_selections');
       let result = {text: null, interactiveObjects: null};
       if (sameNotice) {
@@ -545,6 +554,9 @@ export default defineBackground({
       let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, sndLevelNoticeText);
       console.log(`purposeDeclared on second level: ${purposeDeclared}`);
       if (purposeDeclared) {
+        /**
+         * @type {Selection}
+         */
         let selection = await storage.getItem('local:selection');
         if (selection.notice.label === 0) {
           // TODO: maybe store the info somewhere that purpose was only declared on second level
@@ -563,6 +575,7 @@ export default defineBackground({
         return getIELabel(res);
       });
       for (let i = 0; i < labels.length; i++) {
+        sndLevelIntObjs[i].text = [iElement.text[0], sndLevelIntObjs[i].text[0]];
         sndLevelIntObjs[i].selector = [
           iElement.selector[0], ...sndLevelIntObjs[i].selector];
         sndLevelIntObjs[i].label = labels[i];

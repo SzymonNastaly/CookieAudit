@@ -1,6 +1,9 @@
 import {element_is_hidden, NOTICE_STATUS} from './modules/globals.js';
 
 export default defineUnlistedScript(async () => {
+  /**
+   * @type {Selection}
+   */
   const selection = await storage.getItem('local:selection');
   const secondSelections = await storage.getItem('local:second_selections');
 

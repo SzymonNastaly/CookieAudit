@@ -343,6 +343,9 @@ export default () => {
     interactiveElements.current = get_clickable_elements(selected);
     reset();
 
+    /**
+     * @type {Selection}
+     */
     let selection = selectionFromSelectedNotice(selected);
 
     console.log('selected element is: ', selected);
@@ -354,6 +357,9 @@ export default () => {
     if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
       await storage.setItem('local:selection', selection);
     } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
+      /**
+       * @type {Selection[]}
+       */
       let secondSelections = await storage.getItem('local:second_selections');
       secondSelections.push(selection);
       await storage.setItem('local:second_selections', secondSelections);

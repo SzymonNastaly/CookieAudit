@@ -2,6 +2,9 @@ import {extract_text_from_element, get_clickable_elements, SECOND_LVL_STATUS} fr
 import getSingleSelector from './modules/optimal-select2/select.js';
 
 export default defineUnlistedScript(async () => {
+  /**
+   * @type {Selection}
+   */
   const selection = await storage.getItem('local:selection');
 
   let sndLevelNotice;
@@ -14,12 +17,19 @@ export default defineUnlistedScript(async () => {
       join('\n').
       replace(/\s+/g, ' ');
   let sndLevelClickable = get_clickable_elements(sndLevelNotice);
+  /**
+   * @type {InteractiveObjects}
+   */
   let interactiveObjects = [];
   for (let i = 0; i < sndLevelClickable.length; i++) {
+    let boundingClientRect = sndLevelClickable[i].getBoundingClientRect();
     interactiveObjects.push({
       selector: [getSingleSelector(sndLevelClickable[i])],
-      text: extract_text_from_element(sndLevelClickable[i]).join(' '),
+      text: [extract_text_from_element(sndLevelClickable[i]).join(' ')],
       label: null,
+      tagName: sndLevelClickable[i].tagName.toLowerCase(),
+      x: boundingClientRect.x,
+      y: boundingClientRect.y,
     });
   }
   return {
