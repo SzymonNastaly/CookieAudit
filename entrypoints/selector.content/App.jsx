@@ -98,7 +98,6 @@ export default () => {
     if (element.shadowRoot != null) {
       // the mapped element contains a shadow root
       let root = element.shadowRoot;
-      console.log();
       if (root.elementFromPoint(e.clientX, e.clientY) == null) return;
       setHoveringDOMElement(root.elementFromPoint(e.clientX, e.clientY));
     } else {
