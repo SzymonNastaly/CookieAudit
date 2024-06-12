@@ -101,36 +101,6 @@ export default () => {
       console.log();
       if (root.elementFromPoint(e.clientX, e.clientY) == null) return;
       setHoveringDOMElement(root.elementFromPoint(e.clientX, e.clientY));
-
-      //setHoveringDOMElement(findFirstAreaChild(Array.from(root.children)));
-
-      function findFirstAreaChild(rootChildren) {
-        const queue = rootChildren;
-
-        while (queue.length > 0) {
-          const element = queue.shift(); // Get and remove the first element from the queue
-
-          // Check if the element is a <style> or <script> element
-          if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT' || element.nodeType !== 1) {
-            continue; // Skip this element
-          }
-
-          // Get dimensions of the element to calculate the area
-          const rect = element.getBoundingClientRect();
-          const area = rect.width * rect.height;
-
-          // Check if the area is greater than 1 pixel (not 1x1 or smaller)
-          if (area > 1) {
-            return element; // Stop the search and return the element
-          }
-
-          // Enqueue child elements to continue the BFS
-          for (const child of element.children) {
-            queue.push(child);
-          }
-        }
-        return null; // If no element is found, return null
-      }
     } else {
       setHoveringDOMElement(element);
     }
@@ -216,6 +186,14 @@ export default () => {
       return;
     }
     let selected = document.elementFromPoint(e.clientX, e.clientY);
+    if (!selected) return;
+    if (selected.shadowRoot != null) {
+      // the mapped element contains a shadow root
+      let root = selected.shadowRoot;
+      selected = root.elementFromPoint(e.clientX, e.clientY);
+      if (selected == null) return;
+    }
+
     selected = climbUpEquivalenceTree(selected);
     setSelectedDOMElement(selected);
     if (!selected) console.error('Error: Failed to find the Selected element. Try to fetch again.');
