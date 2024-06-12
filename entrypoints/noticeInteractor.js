@@ -5,13 +5,19 @@ export default defineUnlistedScript(async () => {
   //const frameIdx = selection.iframeFullIndex;
   const selector = interaction.ie.selector;
 
-  //if (frameIdx == null) throw new Error('frameIdx in clickNotice was null.');
   if (selector == null) throw new Error('selector in clickNotice was null.');
 
-  // if the current content script is not in the correct frame, abort
-  // TODO: is this really necessary?
-  //if (frameIdx !== getFullIframeIndex(window)) return NOTICE_STATUS.WRONG_FRAME;
-  const el = document.querySelector(selector[0]);
+  let el = document.querySelector(selector[0]);
+  if (el == null) {
+    let coordinateEl = document.elementFromPoint(interaction.ie.x[0], interaction.ie.y[0]);
+    if (coordinateEl != null) {
+      if (coordinateEl.shadowRoot != null) {
+        // the mapped element contains a shadow root
+        let root = coordinateEl.shadowRoot;
+        el = root.querySelector(selector[0]);
+      }
+    }
+  }
 
   if (el == null) {
     return NOTICE_STATUS.WRONG_SELECTOR;

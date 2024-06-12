@@ -9,8 +9,8 @@
  * @property {string[]} selector - One selector for the interactive object, or two in case of a nested interactive object.
  * @property {string[]} text - One selector for the interactive object, or two in case of a nested interactive object.
  * @property {string} tagName - The tag name of the HTML element.
- * @property {number} x - The x-coordinate of the element on the page.
- * @property {number} y - The y-coordinate of the element on the page.
+ * @property {number[]} x - x-coordinates of the first (and second, if nested) element on the page.
+ * @property {number[]} y - x-coordinates of the first (and second, if nested) element on the page.
  * @property {number|null} label - Classification of the interactive object according to the interactive_elements_model
  */
 

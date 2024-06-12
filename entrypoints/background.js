@@ -244,10 +244,10 @@ export default defineBackground({
             // we sort such
             // that the buttons on the bottom left are first in the list
             let sortedOther = filteredOther.sort((a, b) => {
-              if (a.y > b.y) return -1;  // Sort y descending
-              if (a.y < b.y) return 1;
-              if (a.x < b.x) return -1;  // Sort x ascending
-              if (a.x > b.x) return 1;
+              if (a.y[0] > b.y[0]) return -1;  // Sort y descending
+              if (a.y[0] < b.y[0]) return 1;
+              if (a.x[0] < b.x[0]) return -1;  // Sort x ascending
+              if (a.x[0] > b.x[0]) return 1;
               return 0;
             });
             ieToSndLevel = sortedOther.slice(0, MAX_OTHER_BTN_COUNT);
@@ -355,10 +355,7 @@ export default defineBackground({
             }
 
             await browser.tabs.sendMessage(tabs[0].id, {
-              msg: 'popover',
-              title: browser.i18n.getMessage('background_interactionTitle'),
-              text,
-              color: 'blue',
+              msg: 'popover', title: browser.i18n.getMessage('background_interactionTitle'), text, color: 'blue',
             });
             console.log('starting noticeInteractor for interaction: ', interaction);
 
@@ -371,6 +368,8 @@ export default defineBackground({
 
             if (interaction.ie.selector.length === 2 && wasSuccess) {
               interaction.ie.selector.shift();
+              interaction.ie.x.shift();
+              interaction.ie.y.shift();
               await storage.setItem('local:interaction', interaction);
 
               wasSuccess = noticeInteractAndWait(tabs[0].id);
@@ -629,7 +628,9 @@ export default defineBackground({
       for (let i = 0; i < labels.length; i++) {
         sndLevelIntObjs[i].text = [iElement.text[0], sndLevelIntObjs[i].text[0]];
         sndLevelIntObjs[i].selector = [
-          iElement.selector[0], ...sndLevelIntObjs[i].selector];
+          iElement.selector[0], sndLevelIntObjs[i].selector[0]];
+        sndLevelIntObjs[i].x = [iElement.x[0], sndLevelIntObjs[i].x[0]];
+        sndLevelIntObjs[i].y = [iElement.y[0], sndLevelIntObjs[i].y[0]];
         sndLevelIntObjs[i].label = labels[i];
 
         twoLevelInteractiveElements[labels[i]].push(sndLevelIntObjs[i]);

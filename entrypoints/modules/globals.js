@@ -216,8 +216,8 @@ export function selectionFromSelectedNotice(selected) {
         extract_text_from_element(interactiveElements[i]).
             join(' ')],
       tagName: (interactiveElements[i].tagName.toLowerCase()),
-      x: boundingClientRect.x,
-      y: boundingClientRect.y,
+      x: [boundingClientRect.x],
+      y: [boundingClientRect.y],
       label: null,
     });
   }

@@ -28,8 +28,8 @@ export default defineUnlistedScript(async () => {
       text: [extract_text_from_element(sndLevelClickable[i]).join(' ')],
       label: null,
       tagName: sndLevelClickable[i].tagName.toLowerCase(),
-      x: boundingClientRect.x,
-      y: boundingClientRect.y,
+      x: [boundingClientRect.x],
+      y: [boundingClientRect.y],
     });
   }
   return {
