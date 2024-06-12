@@ -3,14 +3,11 @@ import getSingleSelector from './modules/optimal-select2/select.js';
 
 export default defineUnlistedScript(async () => {
   const selection = await storage.getItem('local:selection');
-  const secondSelections = await storage.getItem('local:second_selections');
 
   let sndLevelNotice;
-  if (secondSelections.length > 0) {
-    const secondSelection = secondSelections[secondSelections.length - 1];
-    sndLevelNotice = document.querySelector(secondSelection.notice.selector);
-  } else {
-    sndLevelNotice = document.querySelector(selection.notice.selector);
+  sndLevelNotice = document.querySelector(selection.notice.selector);
+  if (sndLevelNotice == null) {
+    return {status: SECOND_LVL_STATUS.NOT_FOUND};
   }
   // analyze the second leve = get text and interactive elements
   let sndLevelNoticeText = extract_text_from_element(sndLevelNotice, true).

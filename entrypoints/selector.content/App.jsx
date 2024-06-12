@@ -6,14 +6,13 @@ import './App.module.css';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import {storage} from 'wxt/storage';
-import {extract_text_from_element, get_clickable_elements, getFullIframeIndex, STAGE2} from '../modules/globals.js';
-import getSingleSelector from '../modules/optimal-select2/select.js';
+import {get_clickable_elements, selectionFromSelectedNotice, STAGE2} from '../modules/globals.js';
 
 export default () => {
   const dialogRef = useRef(null);
   const dataRef = useRef(null);
 
-  // function to call when the selection has been confirmed. Sends respons back to background.js
+  // Function to call when the selection has been confirmed. Sends response back to background.js
   const sendResponseRef = useRef(null);
 
   const [isSurfing, _setIsSurfing] = useState(false);
@@ -341,30 +340,11 @@ export default () => {
     });
 
     let selected = selectedDOMElementRef.current;
-    reset();
-    let noticeText = extract_text_from_element(selected, true).
-        join('\n').
-        replace(/\s+/g, ' ');
     interactiveElements.current = get_clickable_elements(selected);
-    let interactiveObjects = [];
-    for (let i = 0; i < interactiveElements.current.length; i++) {
-      let boundingClientRect = interactiveElements.current[i].getBoundingClientRect();
-      interactiveObjects.push({
-        selector: [getSingleSelector(interactiveElements.current[i])],
-        text: extract_text_from_element(interactiveElements.current[i]).
-            join(' '),
-        tagName: (interactiveElements.current[i].tagName.toLowerCase()),
-        x: boundingClientRect.x,
-        y: boundingClientRect.y,
-        label: null,
-      });
-    }
+    reset();
 
-    let selection = {
-      notice: {
-        selector: getSingleSelector(selected), text: noticeText, label: null,
-      }, interactiveObjects: interactiveObjects, iframeFullIndex: getFullIframeIndex(window),
-    };
+    let selection = selectionFromSelectedNotice(selected);
+
     console.log('selected element is: ', selected);
     setTimeout(() => {
       confirmHandled.current = false;

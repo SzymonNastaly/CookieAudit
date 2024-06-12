@@ -1,5 +1,14 @@
 # Devlog
 
+## June 12, 2024
+
+We need to just use the retrieveDataFromNotice inside processSelectedSettings,
+to handle both cases where we either have a new notice for the second layer or not.
+Make the separation of those cases more accurate.
+(Right now we just use the most recent selected notice,
+this obv doesn't work if we were to have a second notice for one settings button,
+but the first notice for another settings button.)
+
 ## June 6, 2024
 
 I had a problem with shadow roots.
@@ -231,7 +240,7 @@ The non-quantized version works like this:
 let useQuantized = false;
 let tokenizer = await AutoTokenizer.from_pretrained("snastal/purpose_detection_model", {quantized: useQuantized});
 let model = await AutoModelForSequenceClassification.from_pretrained("snastal/purpose_detection_model", {
-    quantized: useQuantized
+  quantized: useQuantized
 });
 
 // Actually run the model on the input text
@@ -244,8 +253,8 @@ classify one sentence after the other (so the following is not possible):
 
 ```javascript
 let classifications = await Promise.all(sentences.map(async sentence => {
-    let res = await classify(sentence);
-    return getPrediction(res);
+  let res = await classify(sentence);
+  return getPrediction(res);
 }));
 ```
 

@@ -8,6 +8,8 @@ Released under the MIT License, see included LICENSE file.
 */
 //-------------------------------------------------------------------------------
 
+import getSingleSelector from './optimal-select2/select.js';
+
 /**
  * A scan is always in one of these 4 stages.
  * - "initial": not yet started (scan can also be undefined in this stage),
@@ -65,7 +67,7 @@ export const NOTICE_STATUS = Object.freeze({
 });
 
 export const SECOND_LVL_STATUS = Object.freeze({
-  EXTERNAL_ANCHOR: 0, SUCCESS: 1, NEW_NOTICE: 2, SAME_NOTICE: 3,
+  EXTERNAL_ANCHOR: 0, SUCCESS: 1, NEW_NOTICE: 2, SAME_NOTICE: 3, NOT_FOUND: 4,
 });
 
 // Function to await no changes being made to the DOM. ChatGPT
@@ -140,7 +142,7 @@ export function getIframeIndex(win) {
 }
 
 export function waitStableFrames(tabId, t = 2000, pollInterval = 100) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve, _) => {
     let currentValue = await browser.webNavigation.getAllFrames({tabId: tabId});
     let startTime = Date.now();
     let timerId;
@@ -187,6 +189,37 @@ export function updateTabAndWait(tabId, url) {
       reject(new Error(e.message));
     }
   });
+}
+
+/**
+ *
+ * @param {HTMLElement} selected
+ * @return {{interactiveObjects: *[], iframeFullIndex: string, notice: {selector: (string|*), text: string, label: null}}}
+ */
+export function selectionFromSelectedNotice(selected) {
+  let noticeText = extract_text_from_element(selected, true).
+      join('\n').
+      replace(/\s+/g, ' ');
+  const interactiveElements = get_clickable_elements(selected);
+  let interactiveObjects = [];
+  for (let i = 0; i < interactiveElements.length; i++) {
+    let boundingClientRect = interactiveElements[i].getBoundingClientRect();
+    interactiveObjects.push({
+      selector: [getSingleSelector(interactiveElements[i])],
+      text: extract_text_from_element(interactiveElements[i]).
+          join(' '),
+      tagName: (interactiveElements[i].tagName.toLowerCase()),
+      x: boundingClientRect.x,
+      y: boundingClientRect.y,
+      label: null,
+    });
+  }
+
+  return {
+    notice: {
+      selector: getSingleSelector(selected), text: noticeText, label: null,
+    }, interactiveObjects: interactiveObjects, iframeFullIndex: getFullIframeIndex(window),
+  };
 }
 
 // Returns a unique index in iframe hierarchy, or empty string if topmost

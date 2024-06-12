@@ -235,17 +235,10 @@ export default defineBackground({
             ieToSndLevel = sortedOther.slice(0, MAX_OTHER_BTN_COUNT);
           }
           for (const iElement of ieToSndLevel) {
-            //console.log("inspecting for second level of iElement: ", iElement);
-
             let interaction = await storage.getItem('local:interaction');
             interaction.ie = iElement;
             await storage.setItem('local:interaction', interaction);
 
-            /*const discoveryRet = await browser.scripting.executeScript({
-                target: {tabId: tabs[0].id, allFrames: true},
-                files: ['secondLevelDiscovery.js'],
-                injectImmediately: true
-            });*/
             console.log(`FIRST time before awaitNoDOMChanges ${new Date().getTime() / 1000}`);
             await browser.scripting.executeScript({
               target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
@@ -266,7 +259,7 @@ export default defineBackground({
                 ({
                   sndLevelNoticeText, sndLevelIntObjs,
                 } = await processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
-                    USE_QUANTIZED));
+                    USE_QUANTIZED, true));
                 break;
               } else if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
                 console.log('determined EXTERNAL_ANCHOR');
@@ -288,7 +281,7 @@ export default defineBackground({
                 ({
                   sndLevelNoticeText, sndLevelIntObjs,
                 } = await processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
-                    USE_QUANTIZED));
+                    USE_QUANTIZED, false));
                 break;
               }
             }
@@ -515,13 +508,31 @@ export default defineBackground({
      * @param twoLevelInteractiveElements
      * @param iElement
      * @param {boolean} useQuantized
+     * @param {boolean} sameNotice True if the settings notice has the same selector as the first cookie notice.
      * @return {Promise<{sndLevelIntObjs: (*|[]|null), sndLevelNoticeText: *}>}
      */
     async function processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
-        useQuantized) {
+        useQuantized, sameNotice) {
       const secondSelections = await storage.getItem('local:second_selections');
       let result = {text: null, interactiveObjects: null};
-      if (secondSelections.length > 0) {
+      if (sameNotice) {
+        // need to get data from the notice with the selector in local:selection
+        let ret = await browser.scripting.executeScript({
+          target: {tabId: tabs[0].id, allFrames: true},
+          files: ['retrieveDataFromFirstNotice.js'],
+          injectImmediately: true,
+        });
+        for (const frameRet of ret) {
+          const frameRes = frameRet.result;
+          if (frameRes.status === SECOND_LVL_STATUS.SUCCESS) {
+            result.text = frameRes.text;
+            result.interactiveObjects = frameRes.interactiveObjects;
+            break;
+          }
+        }
+        console.log('result of same notice case: ', result);
+      } else if (!sameNotice && secondSelections.length > 0) {
+        // getting the data from the most recent addition to secondSelections
         result.text = secondSelections[secondSelections.length - 1].notice.text;
         result.interactiveObjects = secondSelections[secondSelections.length - 1].interactiveObjects;
       }
