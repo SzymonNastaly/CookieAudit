@@ -13,6 +13,15 @@ export default () => {
     sendResponse({msg: 'ok'});
   }
 
+  function notificationTime(text) {
+    const wpm = 60;
+    const wordLength = 5;
+    let words = text.length / wordLength;
+    const wordsTime = ((words / wpm) * 60) * 100;
+    const delay = 2500;
+    return wordsTime + delay;
+  }
+
   /**
    * @typedef {Object} MessageObject
    * @property {string} msg - The message string.
@@ -24,7 +33,6 @@ export default () => {
    * @param sendResponse
    */
   function handleNotificationMessage(message, sender, sendResponse) {
-    const NOTIFICATION_TIME = 4000;
     const {msg} = message;
     if (msg === 'dialog') {
       const {title, text} = message;
@@ -34,7 +42,7 @@ export default () => {
         let el = document.querySelector('#notification-dialog');
         el.showModal();
         el.addEventListener('click', closeEl);
-        await delay(NOTIFICATION_TIME);
+        await delay(notificationTime(text));
         if (el.open) {
           el.removeEventListener('click', closeEl);
           el.close();
@@ -49,7 +57,7 @@ export default () => {
       (async () => {
         let el = document.querySelector('#notification-popover');
         el.showPopover();
-        await delay(NOTIFICATION_TIME);
+        await delay(notificationTime(text));
         el.hidePopover();
         sendResponse({msg: 'ok'});
       })();
@@ -69,13 +77,13 @@ export default () => {
     <dialog id="notification-dialog">
       <div id="dialog-div">
         <p id="title">{title}</p>
-        <p id="text">{text}</p>
+        <p id="text" dangerouslySetInnerHTML={{__html: text}}></p>
       </div>
     </dialog>
     <div popover="manual" id="notification-popover">
       <div id="popover-div">
         <p id="title">{title}</p>
-        <p id="text">{text}</p>
+        <p id="text" dangerouslySetInnerHTML={{__html: text}}></p>
       </div>
     </div>
   </>);

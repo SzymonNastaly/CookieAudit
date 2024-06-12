@@ -1,4 +1,59 @@
 {
+  "background_doubleInteractionText": {
+    "message": "Interaktion mit Elementen von zwei Ebenen: <b>$text1$</b> > <b>$text2$</b>",
+    "placeholders": {
+      "text1": {
+        "content": "$1"
+      },
+      "text2": {
+        "content": "$2"
+      }
+    }
+  },
+  "background_downloadingModelsText": {
+    "message": "Es werden die AI Modelle für die Analyse des Cookiebanners heruntergeladen. Falls diese Browsererweiterung seit längerer Zeit nicht verwendet wurde, könnte der Download etwas länger dauern. Sie können den Fortschritt im Popup oben rechts verfolgen."
+  },
+  "background_downloadingModelsTitle": {
+    "message": "Info"
+  },
+  "background_ieErrorText": {
+    "message": "Die Interaktion mit dem Element hat nicht funktioniert. Wir überspringen es."
+  },
+  "background_ieErrorTitle": {
+    "message": "Fehler"
+  },
+  "background_ieSuccessText": {
+    "message": "Die Interaktion mti dem Element war erfolgreich. Wir fangen mit der Seiteninteraktion an: Scrollen und klicken auf Links."
+  },
+  "background_ieSuccessTitle": {
+    "message": "Info"
+  },
+  "background_interactWoBannerText": {
+    "message": "Starten von Websiteinteraktion (Scrollen und Anklicken von Links) mit ignoriertem Cookiebanner."
+  },
+  "background_interactWoBannerTitle": {
+    "message": "Info"
+  },
+  "background_interactionGeneralTitle": {
+    "message": "Info"
+  },
+  "background_interactionTitle": {
+    "message": "Info"
+  },
+  "background_singleInteractionText": {
+    "message": "Interaction mit Element: <b>$text$</b>",
+    "placeholders": {
+      "text": {
+        "content": "$1"
+      }
+    }
+  },
+  "background_startingClassificationText": {
+    "message": "Der Download ist beendet. Die Analyse des Cookiebanners beginnt."
+  },
+  "background_startingClassificationTitle": {
+    "message": "Info"
+  },
   "ext_description": {
     "message": "Regelkonforme Nutzung von Cookies überprüfen."
   },
@@ -18,10 +73,10 @@
     "message": "Vor dem Start: öffnen Sie die Zielwebsite und schließen alle anderen Tabs/Browserfenster."
   },
   "popup_noNoticeBtn": {
-    "message": "Kein Cookie Banner"
+    "message": "Kein Cookiebanner"
   },
   "popup_skipSelection": {
-    "message": "Bitte wählen Sie den Cookie Banner aus. Falls es keinen gibt, überspringen Sie die Auswahl unten."
+    "message": "Bitte wählen Sie das Cookiebanner aus. Falls es keinen gibt, überspringen Sie die Auswahl unten."
   },
   "popup_startScanBtn": {
     "message": "Scan starten"
@@ -44,8 +99,20 @@
   "selector_outerBtn": {
     "message": "Äußeres"
   },
+  "selector_selectNewNoticeText": {
+    "message": "Bitte wählen sie das neuen Banner aus. Die Auswahl beginnt <b>nach</b> dem Schließen dieser Infobox."
+  },
+  "selector_selectNewNoticeTitle": {
+    "message": "Wichtig"
+  },
+  "selector_selectNoticeText": {
+    "message": "Bitte wählen sie das Cookiebanner aus. Die Auswahl beginnt <b>nach</b> dem Schließen dieser Infobox. Falls es kein Cookiebanner gibt, überspringen Sie die Auswahl im Popup oben rechts."
+  },
+  "selector_selectNoticeTitle": {
+    "message": "Wichtig"
+  },
   "selector_selectedBannerText": {
-    "message": "Der Cookiebanner wurde ausgewählt."
+    "message": "Das Cookiebanner wurde ausgewählt."
   },
   "selector_selectedBannerTitle": {
     "message": "Info"

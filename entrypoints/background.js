@@ -143,6 +143,21 @@ export default defineBackground({
           // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
           env.backends.onnx.wasm.numThreads = 1;
 
+          await browser.tabs.sendMessage(tabs[0].id, {
+            msg: 'popover',
+            title: browser.i18n.getMessage('background_downloadingModelsTitle'),
+            text: browser.i18n.getMessage('background_downloadingModelsText'),
+            color: 'blue',
+          });
+          await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
+          await IEPipelineSingleton.getInstance(USE_QUANTIZED);
+
+          await browser.tabs.sendMessage(tabs[0].id, {
+            msg: 'popover',
+            title: browser.i18n.getMessage('background_startingClassificationTitle'),
+            text: browser.i18n.getMessage('background_startingClassificationText'),
+            color: 'blue',
+          });
           let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
           let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, selection.notice.text);
           if (purposeDeclared) {
@@ -275,6 +290,7 @@ export default defineBackground({
                 await storage.setItem('local:scan', scan);
                 const mountResponse = await browser.tabs.sendMessage(tabs[0].id, {msg: 'mount_select'});
                 if (mountResponse?.msg !== 'ok') throw new Error('mount_select not confirmed by content script');
+
                 const response = await browser.tabs.sendMessage(tabs[0].id, {msg: 'start_select'});
                 if (response?.msg !== 'selected_notice') throw new Error('start_select not confirmed by selector');
 
@@ -328,6 +344,22 @@ export default defineBackground({
             scan = null;
             await storage.setItem('local:interaction', interaction);
 
+            console.log('interaction is: ', interaction);
+
+            let text;
+            if (interaction.ie.selector.length === 1) {
+              text = browser.i18n.getMessage('background_singleInteractionText', [interaction.ie.text[0]]);
+            } else if (interaction.ie.selector.length === 2) {
+              text = browser.i18n.getMessage('background_doubleInteractionText',
+                  [interaction.ie.text[0], interaction.ie.text[1]]);
+            }
+
+            await browser.tabs.sendMessage(tabs[0].id, {
+              msg: 'popover',
+              title: browser.i18n.getMessage('background_interactionTitle'),
+              text,
+              color: 'blue',
+            });
             console.log('starting noticeInteractor for interaction: ', interaction);
 
             await waitStableFrames(tabs[0].id);
@@ -345,6 +377,13 @@ export default defineBackground({
             }
 
             if (wasSuccess) {
+              await browser.tabs.sendMessage(tabs[0].id, {
+                msg: 'popover',
+                title: browser.i18n.getMessage('background_ieSuccessTitle'),
+                text: browser.i18n.getMessage('background_ieSuccessText'),
+                color: 'blue',
+              });
+
               console.log('interacting with page');
               await interactWithPage(tabs);
               await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
@@ -359,6 +398,13 @@ export default defineBackground({
               await updateTabAndWait(tabs[0].id, scan.url);
               scan = null;
             } else if (!wasSuccess) {
+              await browser.tabs.sendMessage(tabs[0].id, {
+                msg: 'popover',
+                title: browser.i18n.getMessage('background_ieErrorTitle'),
+                text: browser.i18n.getMessage('background_ieErrorText'),
+                color: 'red',
+              });
+
               // reset cookies and reload page
               await clearCookies();
               let scan = await storage.getItem('local:scan');
@@ -366,6 +412,12 @@ export default defineBackground({
               scan = null;
             }
           }
+          await browser.tabs.sendMessage(tabs[0].id, {
+            msg: 'popover',
+            title: browser.i18n.getMessage('background_interactWoBannerTitle'),
+            text: browser.i18n.getMessage('background_interactWoBannerText'),
+            color: 'blue',
+          });
 
           // interact with page, while ignoring cookie banner
           await interactWithPage(tabs);

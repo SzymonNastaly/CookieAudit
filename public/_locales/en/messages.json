@@ -1,4 +1,59 @@
 {
+  "background_doubleInteractionText": {
+    "message": "Starting interaction with a nested button: <b>$text1$</b> > <b>$text2$</b>",
+    "placeholders": {
+      "text1": {
+        "content": "$1"
+      },
+      "text2": {
+        "content": "$2"
+      }
+    }
+  },
+  "background_downloadingModelsText": {
+    "message": "Starting download of AI models for the analysis of the cookie notice. If the extension has not been used recently, this may take some time. You can follow the progress in the popup on the top right."
+  },
+  "background_downloadingModelsTitle": {
+    "message": "Info"
+  },
+  "background_ieErrorText": {
+    "message": "The interaction with the button did not work. We are skipping it."
+  },
+  "background_ieErrorTitle": {
+    "message": "Error"
+  },
+  "background_ieSuccessText": {
+    "message": "The interaction with the button was successful. Starting interaction with webpage (scrolling and clicking on links)."
+  },
+  "background_ieSuccessTitle": {
+    "message": "Success"
+  },
+  "background_interactWoBannerText": {
+    "message": "Starting interaction with the website (scrolling and clicking on links), while ignoring the cookie banner."
+  },
+  "background_interactWoBannerTitle": {
+    "message": "Info"
+  },
+  "background_interactionGeneralTitle": {
+    "message": "Info"
+  },
+  "background_interactionTitle": {
+    "message": "Info"
+  },
+  "background_singleInteractionText": {
+    "message": "Starting interaction with button: <b>$text$</b>",
+    "placeholders": {
+      "text": {
+        "content": "$1"
+      }
+    }
+  },
+  "background_startingClassificationText": {
+    "message": "The download has finished. The analysis of the cookie banner starts now."
+  },
+  "background_startingClassificationTitle": {
+    "message": "Info"
+  },
   "ext_description": {
     "message": "Investigate cookie compliance on websites."
   },
@@ -43,6 +98,18 @@
   },
   "selector_outerBtn": {
     "message": "Outer"
+  },
+  "selector_selectNewNoticeText": {
+    "message": "Please select the new cookie notice that contains the settings. Selection begins <b>after</b> this notice disappears."
+  },
+  "selector_selectNewNoticeTitle": {
+    "message": "Important"
+  },
+  "selector_selectNoticeText": {
+    "message": "Please select the cookie notice. Selection begins <b>after</b> this notice disappears. If there is no cookie banner, skip the selection in the popup on the top right."
+  },
+  "selector_selectNoticeTitle": {
+    "message": "Important"
   },
   "selector_selectedBannerText": {
     "message": "The cookie notice was selected."

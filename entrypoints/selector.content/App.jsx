@@ -308,14 +308,31 @@ export default () => {
     const {msg} = message;
     if (msg === 'start_select') {
       console.log('received start_select');
+      (async () => {
+        const scan = await storage.getItem('local:scan');
 
-      let domSelector = document.querySelector('dom-selector');
-      domSelector.showPopover();
+        let text, title;
+        if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
+          title = browser.i18n.getMessage('selector_selectNoticeTitle');
+          text = browser.i18n.getMessage('selector_selectNoticeText');
+        } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
+          title = browser.i18n.getMessage('selector_selectNewNoticeTitle');
+          text = browser.i18n.getMessage('selector_selectNewNoticeText');
+        }
+        await browser.runtime.sendMessage({
+          msg: 'relay', data: {
+            msg: 'popover', title, text, color: 'orange',
+          },
+        });
 
-      setIsSurfing(true);
-      isInactive.current = false;
-      sendResponseRef.current = sendResponse;
-      window.addEventListener('mousedown', handleMousedown, {once: true});
+        let domSelector = document.querySelector('dom-selector');
+        domSelector.showPopover();
+
+        setIsSurfing(true);
+        isInactive.current = false;
+        sendResponseRef.current = sendResponse;
+        window.addEventListener('mousedown', handleMousedown, {once: true});
+      })();
       return true;
     } else if (msg === 'cancel_select') {
       sendResponse({msg: 'ok'});

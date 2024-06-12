@@ -96,7 +96,7 @@ export default function App() {
     if (windows.size > 1) {
       const tabs = await browser.tabs.query({active: true});
       await browser.tabs.sendMessage(tabs[0].id, {
-        msg: 'dialog',
+        msg: 'popover',
         title: browser.i18n.getMessage('popup_errorTitle'),
         text: browser.i18n.getMessage('popup_tooManyWindowsText'),
         color: 'red',
@@ -105,7 +105,7 @@ export default function App() {
     } else if (tabs.length > 1) {
       const tabs = await browser.tabs.query({active: true});
       await browser.tabs.sendMessage(tabs[0].id, {
-        msg: 'dialog',
+        msg: 'popover',
         title: browser.i18n.getMessage('popup_errorTitle'),
         text: browser.i18n.getMessage('popup_tooManyTabsText'),
         color: 'red',
