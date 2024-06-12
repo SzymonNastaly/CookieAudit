@@ -5,32 +5,35 @@ dom-selector * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
 dom-selector {
     z-index: 999999999999999999;
     position: fixed;
     background: #1e90ff77;
-/*    top: 0;
-    left: 0;
-    background: #1e90ff77;
-    border-style: solid;
-    border-color: #ff8c0099;
-    --bt: 1px;
-    --br: 1px;
-    --bb: 1px;
-    --bl: 1px;
-    --mt: 0px;
-    --mr: 0px;
-    --mb: 0px;
-    --ml: 0px;
-    --pt: 0px;
-    --pr: 0px;
-    --pb: 0px;
-    --pl: 0px;
-    border-width: var(--bt) var(--br) var(--bb) var(--bl);*/
+    /*    top: 0;
+        left: 0;
+        background: #1e90ff77;
+        border-style: solid;
+        border-color: #ff8c0099;
+        --bt: 1px;
+        --br: 1px;
+        --bb: 1px;
+        --bl: 1px;
+        --mt: 0px;
+        --mr: 0px;
+        --mb: 0px;
+        --ml: 0px;
+        --pt: 0px;
+        --pr: 0px;
+        --pb: 0px;
+        --pl: 0px;
+        border-width: var(--bt) var(--br) var(--bb) var(--bl);*/
 }
+
 .surfing {
     display: block;
 }
+
 .notSurfing {
     display: none;
 }
@@ -45,6 +48,7 @@ dom-selector.surfing::before {
     left: calc(0px - var(--ml) - var(--bl));
     border-width: var(--mt) var(--mr) var(--mb) var(--ml);
 }
+
 dom-selector.surfing::after {
     box-sizing: content-box;
     content: " ";
@@ -53,6 +57,7 @@ dom-selector.surfing::after {
     border: 0 solid #20c02077;
     border-width: var(--pt) var(--pr) var(--pb) var(--pl);
 }
+
 dom-selector-data {
     z-index: 1;
     /*display: flex;
@@ -72,16 +77,20 @@ dom-selector-data {
 dom-selector-data.setbelow {
     top: 100%;
 }
+
 dom-selector-data.fromright {
     right: 0;
     left: auto;
 }
+
 dom-selector-data.outside {
     translate: 0 calc(-100% - 15px);
 }
+
 dom-selector-data.setbelow {
     translate: 5px;
 }
+
 dom-selector-data.scrollable {
     position: fixed;
     top: 0;

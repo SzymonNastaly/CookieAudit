@@ -1,12 +1,17 @@
+import {extractFeatures} from './modules/extractor.js';
 import {
-    classIndexToString, datetimeToExpiry, escapeString, urlToUniformDomain, isAALabel, INTERACTION_STATE, Purpose
-} from "./modules/globals.js";
-import {extractFeatures} from "./modules/extractor.js";
-import {predictClass} from "./modules/predictor.js";
-
+  classIndexToString,
+  datetimeToExpiry,
+  escapeString,
+  INTERACTION_STATE,
+  isAALabel,
+  Purpose,
+  urlToUniformDomain,
+} from './modules/globals.js';
+import {predictClass} from './modules/predictor.js';
 
 export default defineUnlistedScript(async () => {
-})
+});
 
 const UPDATE_LIMIT = 10;
 const MINTIME = 120000;
@@ -17,45 +22,46 @@ const MINTIME = 120000;
  * @return {Promise<void>}
  */
 export async function storeCookieResults(interactionState) {
-    /**
-     * @type {CookieCollection}
-     */
-    const cookiesAfterInteraction = await storage.getItem("local:cookies");
-    let aaCookies = []
-    // if rejection, there should be no AA cookies
-    console.log("cookiesAfterInteraction", cookiesAfterInteraction);
-    for (const cookieKey in cookiesAfterInteraction) {
-        let cookie = cookiesAfterInteraction[cookieKey];
-        if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
-    }
-    let scan = await storage.getItem("local:scan");
-    const interaction = await storage.getItem("local:interaction");
+  /**
+   * @type {CookieCollection}
+   */
+  const cookiesAfterInteraction = await storage.getItem('local:cookies');
+  let aaCookies = [];
+  // if rejection, there should be no AA cookies
+  console.log('cookiesAfterInteraction', cookiesAfterInteraction);
+  for (const cookieKey in cookiesAfterInteraction) {
+    let cookie = cookiesAfterInteraction[cookieKey];
+    if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
+  }
+  let scan = await storage.getItem('local:scan');
+  const interaction = await storage.getItem('local:interaction');
 
-    if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
-        // analyze cookies after interaction with both notice and page
+  if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
+    // analyze cookies after interaction with both notice and page
 
-        if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
-            if (aaCookies.length > 0) {
-                const entry = {
-                    ie: interaction.ie, aaCookies: aaCookies
-                }
-                if (interaction.ie.label === Purpose.Reject) {
-                    scan.aaCookiesAfterReject.push(entry);
-                } else if (interaction.ie.label === Purpose.SaveSettings) {
-                    scan.aaCookiesAfterSave.push(entry);
-                } else if (interaction.ie.label === Purpose.Close) {
-                    scan.aaCookiesAfterClose.push(entry);
-                }
-
-            }
+    if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(
+        interaction?.ie?.label)) {
+      if (aaCookies.length > 0) {
+        const entry = {
+          ie: interaction.ie, aaCookies: aaCookies,
+        };
+        if (interaction.ie.label === Purpose.Reject) {
+          scan.aaCookiesAfterReject.push(entry);
+        } else if (interaction.ie.label === Purpose.SaveSettings) {
+          scan.aaCookiesAfterSave.push(entry);
+        } else if (interaction.ie.label === Purpose.Close) {
+          scan.aaCookiesAfterClose.push(entry);
         }
-    } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
-        // analyze cookies after interaction with only page and ignoring notice
-        if (aaCookies.length > 0) { // AA cookies after reject
-            scan.aaCookiesWONoticeInteraction = aaCookies;
-        }
+
+      }
     }
-    await storage.setItem("local:scan", scan);
+  } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
+    // analyze cookies after interaction with only page and ignoring notice
+    if (aaCookies.length > 0) { // AA cookies after reject
+      scan.aaCookiesWONoticeInteraction = aaCookies;
+    }
+  }
+  await storage.setItem('local:scan', scan);
 }
 
 /**
@@ -64,7 +70,8 @@ export async function storeCookieResults(interactionState) {
  * @returns {String}  string representing the cookie's key
  */
 function constructKeyFromCookie(cookieDat) {
-    return `${cookieDat.name};${urlToUniformDomain(cookieDat.domain)};${cookieDat.path}`;
+  return `${cookieDat.name};${urlToUniformDomain(
+      cookieDat.domain)};${cookieDat.path}`;
 }
 
 /**
@@ -73,25 +80,26 @@ function constructKeyFromCookie(cookieDat) {
  * @return {Object}  Feature Extraction input object.
  */
 function createFEInput(cookie) {
-    return {
-        name: escapeString(cookie.name),
-        domain: escapeString(cookie.domain),
-        path: escapeString(cookie.path),
-        current_label: -1,
-        label_ts: 0,
-        storeId: escapeString(cookie.storeId),
-        variable_data: [{
-            host_only: cookie.hostOnly,
-            http_only: cookie.httpOnly,
-            secure: cookie.secure,
-            session: cookie.session,
-            expirationDate: cookie.expirationDate,
-            expiry: datetimeToExpiry(cookie),
-            value: escapeString(cookie.value),
-            same_site: escapeString(cookie.sameSite),
-            timestamp: Date.now(),
-        },],
-    };
+  return {
+    name: escapeString(cookie.name),
+    domain: escapeString(cookie.domain),
+    path: escapeString(cookie.path),
+    current_label: -1,
+    label_ts: 0,
+    storeId: escapeString(cookie.storeId),
+    variable_data: [
+      {
+        host_only: cookie.hostOnly,
+        http_only: cookie.httpOnly,
+        secure: cookie.secure,
+        session: cookie.session,
+        expirationDate: cookie.expirationDate,
+        expiry: datetimeToExpiry(cookie),
+        value: escapeString(cookie.value),
+        same_site: escapeString(cookie.sameSite),
+        timestamp: Date.now(),
+      }],
+  };
 }
 
 /**
@@ -103,27 +111,29 @@ function createFEInput(cookie) {
  * @return {Promise<object>}        The existing cookie object, updated with new data.
  */
 async function updateFEInput(storedFEInput, rawCookie) {
-    let updateArray = storedFEInput["variable_data"];
+  let updateArray = storedFEInput['variable_data'];
 
-    let updateStruct = {
-        "host_only": rawCookie.hostOnly,
-        "http_only": rawCookie.httpOnly,
-        "secure": rawCookie.secure,
-        "session": rawCookie.session,
-        "expiry": datetimeToExpiry(rawCookie),
-        "value": escapeString(rawCookie.value),
-        "same_site": escapeString(rawCookie.sameSite),
-        "timestamp": Date.now()
-    };
+  let updateStruct = {
+    'host_only': rawCookie.hostOnly,
+    'http_only': rawCookie.httpOnly,
+    'secure': rawCookie.secure,
+    'session': rawCookie.session,
+    'expiry': datetimeToExpiry(rawCookie),
+    'value': escapeString(rawCookie.value),
+    'same_site': escapeString(rawCookie.sameSite),
+    'timestamp': Date.now(),
+  };
 
-    // remove head if limit reached
-    if (updateArray.length >= UPDATE_LIMIT) updateArray.shift();
+  // remove head if limit reached
+  if (updateArray.length >= UPDATE_LIMIT) updateArray.shift();
 
-    updateArray.push(updateStruct);
-    console.assert(updateArray.length > 1, "Error: Performed an update without appending to the cookie?");
-    console.assert(updateArray.length <= UPDATE_LIMIT, "Error: cookie update limit still exceeded!");
+  updateArray.push(updateStruct);
+  console.assert(updateArray.length > 1,
+      'Error: Performed an update without appending to the cookie?');
+  console.assert(updateArray.length <= UPDATE_LIMIT,
+      'Error: cookie update limit still exceeded!');
 
-    return storedFEInput;
+  return storedFEInput;
 }
 
 /**
@@ -131,46 +141,49 @@ async function updateFEInput(storedFEInput, rawCookie) {
  * @param {Object} serializedCookie Cookie to insert into storage.
  */
 async function insertCookieIntoStorage(serializedCookie) {
-    let ckey = constructKeyFromCookie(serializedCookie);
+  let ckey = constructKeyFromCookie(serializedCookie);
 
-    let cookies = await storage.getItem("local:cookies");
-    if (!cookies) {
-        cookies = {};
-    }
-    cookies[ckey] = serializedCookie;
-    await storage.setItem("local:cookies", cookies);
-    return true;
+  let cookies = await storage.getItem('local:cookies');
+  if (!cookies) {
+    cookies = {};
+  }
+  cookies[ckey] = serializedCookie;
+  await storage.setItem('local:cookies', cookies);
+  return true;
 }
 
 /**
  * Remove a cookie from the browser and from historyDB
  */
 export async function clearCookies() {
-    // First, we delete the cookies from the browser
-    async function removeCookie(cookie) {
-        let url = "http" + (cookie.secure ? "s" : "") + "://" + cookie.domain + cookie.path;
-        await browser.cookies.remove({url: url, name: cookie.name});
-    }
+  // First, we delete the cookies from the browser
+  async function removeCookie(cookie) {
+    let url = 'http' + (cookie.secure ? 's' : '') + '://' + cookie.domain +
+        cookie.path;
+    await browser.cookies.remove({url: url, name: cookie.name});
+  }
 
-    const all_cookies = await browser.cookies.getAll({});
-    let promises = [];
-    for (let i = 0; i < all_cookies.length; i++) {
-        promises.push(removeCookie(all_cookies[i]));
-    }
+  const all_cookies = await browser.cookies.getAll({});
+  let promises = [];
+  for (let i = 0; i < all_cookies.length; i++) {
+    promises.push(removeCookie(all_cookies[i]));
+  }
 
-    const tabs = await browser.tabs.query({active: true});
-    await browser.scripting.executeScript({
-        target: {tabId: tabs[0].id, allFrames: true}, injectImmediately: true, func: (() => {
-            window.localStorage.clear();
-            window.sessionStorage.clear();
-        })
-    });
+  const tabs = await browser.tabs.query({active: true});
+  await browser.scripting.executeScript({
+    target: {tabId: tabs[0].id, allFrames: true},
+    injectImmediately: true,
+    func: (() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    }),
+  });
 
-    await Promise.all(promises);
+  await Promise.all(promises);
 
-    //await storageMutex.write({"cookies": {}});
-    await storage.setItem("local:cookies", {});
-    //setCookies("local:cookies", {});
+  //await storageMutex.write({"cookies": {}});
+  await storage.setItem('local:cookies', {});
+  //setCookies("local:cookies", {});
 }
 
 /**
@@ -179,16 +192,16 @@ export async function clearCookies() {
  * @returns {Promise<Object>} Either the cookie if found, or undefined if not.
  */
 async function retrieveCookieFromStorage(cookieDat) {
-    let ckey = constructKeyFromCookie(cookieDat);
-    //let {cookies} = await storageMutex.read("cookies");
-    let cookies = await storage.getItem("local:cookies");
-    if (!cookies) {
-        return null;
-    } else if (cookies[ckey]) {
-        return cookies[ckey];
-    } else {
-        return null;
-    }
+  let ckey = constructKeyFromCookie(cookieDat);
+  //let {cookies} = await storageMutex.read("cookies");
+  let cookies = await storage.getItem('local:cookies');
+  if (!cookies) {
+    return null;
+  } else if (cookies[ckey]) {
+    return cookies[ckey];
+  } else {
+    return null;
+  }
 }
 
 /**
@@ -198,10 +211,10 @@ async function retrieveCookieFromStorage(cookieDat) {
  * @return {Promise<Number>}        Cookie category label as an integer, ranging from [0,3].
  */
 async function classifyCookie(newCookie, feature_input) {
-    // Feature extraction timing
-    let features = extractFeatures(feature_input);
-    // 3 from cblk_pscale default
-    return await predictClass(features, 3);
+  // Feature extraction timing
+  let features = extractFeatures(feature_input);
+  // 3 from cblk_pscale default
+  return await predictClass(features, 3);
 }
 
 /**
@@ -211,46 +224,50 @@ async function classifyCookie(newCookie, feature_input) {
  * @param overrideTimeCheck
  */
 async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
-    // First, if consent is given, check if the cookie has already been stored.
-    let serializedCookie, storedCookie;
-    storedCookie = await retrieveCookieFromStorage(newCookie);
-    if (storedCookie) {
-        if (storeUpdate) {
-            serializedCookie = await updateFEInput(storedCookie, newCookie);
-        } else {
-            serializedCookie = storedCookie;
-        }
-
-    }
-
-    // if consent not given, or cookie not present, create a new feature extraction object
-    if (serializedCookie === undefined) {
-        serializedCookie = createFEInput(newCookie);
-    }
-
-    // If cookie recently classified, use the previous label.
-    let elapsed = Date.now() - serializedCookie["label_ts"];
-
-    let clabel = serializedCookie["current_label"];
-    console.assert(clabel !== undefined, "Stored cookie label was undefined!!");
-
-    if (overrideTimeCheck || clabel === -1 || elapsed > MINTIME) {
-        // analyzeCMP(newCookie);
-        clabel = await classifyCookie(newCookie, serializedCookie);
-
-        // Update timestamp and label of the stored cookie
-        serializedCookie["current_label"] = clabel;
-        serializedCookie["label_ts"] = Date.now();
-        console.debug("Perform Prediction: Cookie (%s;%s;%s) receives label (%s)", newCookie.name, newCookie.domain, newCookie.path, classIndexToString(clabel));
+  // First, if consent is given, check if the cookie has already been stored.
+  let serializedCookie, storedCookie;
+  storedCookie = await retrieveCookieFromStorage(newCookie);
+  if (storedCookie) {
+    if (storeUpdate) {
+      serializedCookie = await updateFEInput(storedCookie, newCookie);
     } else {
-        console.debug("Skip Prediction: Cookie (%s;%s;%s) with label (%s)", newCookie.name, newCookie.domain, newCookie.path, classIndexToString(clabel));
+      serializedCookie = storedCookie;
     }
 
-    // If consent is given, store the cookie again.
-    const inserted = await insertCookieIntoStorage(serializedCookie);
-    if (!inserted) {
-        console.error("couldn't insert cookie");
-    }
+  }
+
+  // if consent not given, or cookie not present, create a new feature extraction object
+  if (serializedCookie === undefined) {
+    serializedCookie = createFEInput(newCookie);
+  }
+
+  // If cookie recently classified, use the previous label.
+  let elapsed = Date.now() - serializedCookie['label_ts'];
+
+  let clabel = serializedCookie['current_label'];
+  console.assert(clabel !== undefined, 'Stored cookie label was undefined!!');
+
+  if (overrideTimeCheck || clabel === -1 || elapsed > MINTIME) {
+    // analyzeCMP(newCookie);
+    clabel = await classifyCookie(newCookie, serializedCookie);
+
+    // Update timestamp and label of the stored cookie
+    serializedCookie['current_label'] = clabel;
+    serializedCookie['label_ts'] = Date.now();
+    console.debug('Perform Prediction: Cookie (%s;%s;%s) receives label (%s)',
+        newCookie.name, newCookie.domain, newCookie.path,
+        classIndexToString(clabel));
+  } else {
+    console.debug('Skip Prediction: Cookie (%s;%s;%s) with label (%s)',
+        newCookie.name, newCookie.domain, newCookie.path,
+        classIndexToString(clabel));
+  }
+
+  // If consent is given, store the cookie again.
+  const inserted = await insertCookieIntoStorage(serializedCookie);
+  if (!inserted) {
+    console.error('couldn\'t insert cookie');
+  }
 }
 
 /**
@@ -258,7 +275,7 @@ async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
  * @param {Object} changeInfo  Contains the cookie itself, and cause info.
  */
 export async function cookieListener(changeInfo) {
-    if (!changeInfo.removed) {
-        await handleCookie(changeInfo.cookie, true, false);
-    }
+  if (!changeInfo.removed) {
+    await handleCookie(changeInfo.cookie, true, false);
+  }
 }
