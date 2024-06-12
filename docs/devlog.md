@@ -18,6 +18,13 @@ I therefore want to add
 - more popovers that display current information (e.g., starting to interact with the website) and especially errors
 - very general state information inside the popup
 
+#### Storing both texts of nested interactions
+
+In the case of a two-layer interaction (e.g., first clicking on the settings button and then on the save button),
+we need to store the text of both buttons.
+As of now, we are only storing the text of the second button.
+For this, I will change the interaction.ie.text field from a string to an array of strings.
+
 ## June 6, 2024
 
 I had a problem with shadow roots.
