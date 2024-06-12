@@ -2,12 +2,21 @@
 
 ## June 12, 2024
 
-We need to just use the retrieveDataFromNotice inside processSelectedSettings,
-to handle both cases where we either have a new notice for the second layer or not.
-Make the separation of those cases more accurate.
-(Right now we just use the most recent selected notice,
-this obv doesn't work if we were to have a second notice for one settings button,
-but the first notice for another settings button.)
+### Fixing processSelectedSettings() for notices that are both first and second layer
+
+If the `inspectBtnAndSettings.js` returns `SAME_NOTICE` this means
+that the first layer notice has changed in content and is used to display the settings.
+Therefore, we need to retrieve the `text` and `interactiveObject` a second time.
+For retrieving this data we use `retrieveDataFromFirstNotice.js` inside `processSelectedSettings()`.
+
+### Adding more communication between the extension and the user
+
+Right now, the user receives very little information from the extension about what is going on at any single point in
+time.
+I therefore want to add
+
+- more popovers that display current information (e.g., starting to interact with the website) and especially errors
+- very general state information inside the popup
 
 ## June 6, 2024
 
