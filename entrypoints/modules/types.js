@@ -19,6 +19,7 @@
  * @property {string} selector - The CSS selector for the notice.
  * @property {string} text - The textual content of the notice.
  * @property {number|null} label - Classification of the notice according to the purpose_detection_model
+ * @property {{top: number, bottom: number, left: number, right:number}} rect - Bounding coordinates
  */
 
 /**
@@ -26,4 +27,10 @@
  * @property {string|null} iframeFullIndex - The full index path of the iframe.
  * @property {InteractiveObjects} interactiveObjects - The interactive objects associated with this selection.
  * @property {Notice|null} notice - The notice associated with this selection.
+ */
+
+/**
+ * @typedef {Object} Interaction
+ * @property {InteractiveObject|null} ie - interactive element
+ * @property {string[]} visitedPages
  */
