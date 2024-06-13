@@ -1,5 +1,5 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import {classIndexToString} from './modules/globals';
+import {classIndexToString, COLOR_DIST_THRESHOLD, DARK_PATTERN_STATUS} from './modules/globals';
 import * as pdfFonts from './modules/vfs_fonts';
 
 export default defineUnlistedScript(async () => {
@@ -44,9 +44,16 @@ export default defineUnlistedScript(async () => {
           {text: `Cookie Report: `, style: 'header'}, {
             text: `${scan.url}`, fontSize: 18, bold: true, italics: true,
           }],
-      }, `Date: ${currentDate.toLocaleDateString()}`, {
+      },
+      `Date: ${currentDate.toLocaleDateString()}`,
+      `A cookie notice was detected: ${scan.noticeDetected}`,
+      `A reject button exists in the first layer: ${scan.rejectDetected}`,
+      `A close or save button was found: ${scan.closeSaveDetected}`,
+      `The purpose of analytics/advertising cookies is defined in the notice: ${scan.purposeDeclared}`,
+      {
         text: 'Analytics and Advertising Cookies: Close', style: 'subheader',
-      }, {
+      },
+      {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
@@ -54,9 +61,11 @@ export default defineUnlistedScript(async () => {
               text: 'Name', style: 'tableHeader',
             }], ...cookiesAfterClose],
         },
-      }, {
+      },
+      {
         text: 'Analytics and Advertising Cookies: Reject', style: 'subheader',
-      }, {
+      },
+      {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
@@ -64,9 +73,11 @@ export default defineUnlistedScript(async () => {
               text: 'Name', style: 'tableHeader',
             }], ...aaCookiesAfterReject],
         },
-      }, {
+      },
+      {
         text: 'Analytics and Advertising Cookies: Save', style: 'subheader',
-      }, {
+      },
+      {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
@@ -74,9 +85,11 @@ export default defineUnlistedScript(async () => {
               text: 'Name', style: 'tableHeader',
             }], ...aaCookiesAfterSave],
         },
-      }, {
+      },
+      {
         text: 'Analytics and Advertising Cookies: Ignoring the Cookie Notice', style: 'subheader',
-      }, {
+      },
+      {
         style: 'tableExample', table: {
           headerRows: 1, body: [
             [
@@ -84,7 +97,13 @@ export default defineUnlistedScript(async () => {
               text: 'Name', style: 'tableHeader',
             }], ...aaCookiesWONoticeInteraction],
         },
-      }], styles: {
+      },
+      {
+        text: 'Dark Patterns', style: 'subheader',
+      },
+      `Accept button has different styling then other buttons: ${scan.colorDistance > COLOR_DIST_THRESHOLD}`,
+      `The user is forced to interact with the cookie notice: ${scan.forcedActionStatus ===
+      DARK_PATTERN_STATUS.HAS_FORCED_ACTION}`], styles: {
       header: {
         fontSize: 18, bold: true,
       }, subheader: {
