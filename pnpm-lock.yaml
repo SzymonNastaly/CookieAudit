@@ -23,6 +23,15 @@ importers:
       '@xenova/transformers':
         specifier: ^2.17.2
         version: 2.17.2
+      colorjs.io:
+        specifier: ^0.5.0
+        version: 0.5.0
+      fast-average-color:
+        specifier: ^9.4.0
+        version: 9.4.0
+      html-to-image:
+        specifier: ^1.11.11
+        version: 1.11.11
       pdfmake:
         specifier: ^0.2.10
         version: 0.2.10
@@ -1075,6 +1084,9 @@ packages:
   colorette@2.0.20:
     resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
 
+  colorjs.io@0.5.0:
+    resolution: {integrity: sha512-qekjTiBLM3F/sXKks/ih5aWaHIGu+Ftel0yKEvmpbKvmxpNOhojKgha5uiWEUOqEpRjC1Tq3nJRT7WgdBOxIGg==}
+
   commander@2.9.0:
     resolution: {integrity: sha512-bmkUukX8wAOjHdN26xj5c4ctEV22TQ7dQYhSmuckKhToXrkUn0iIaolHdIxYYqD55nhpSPA9zPQ1yP57GdXP2A==}
     engines: {node: '>= 0.6.x'}
@@ -1354,6 +1366,10 @@ packages:
     engines: {node: '>= 10.17.0'}
     hasBin: true
 
+  fast-average-color@9.4.0:
+    resolution: {integrity: sha512-bvM8vV6YwK07dPbzFz77zJaBcfF6ABVfgNwaxVgXc2G+o0e/tzLCF9WU8Ryp1r0Nkk6JuJNsWCzbb4cLOMlB+Q==}
+    engines: {node: '>= 12'}
+
   fast-fifo@1.3.2:
     resolution: {integrity: sha512-/d9sfos4yxzpwkDkuN7k2SqFKtYNmCTzgfEpz82x34IM9/zc8KGxQoXg1liNC/izpRM/MBdt44Nmx41ZWqk+FQ==}
 
@@ -1550,6 +1566,9 @@ packages:
 
   html-escaper@3.0.3:
     resolution: {integrity: sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ==}
+
+  html-to-image@1.11.11:
+    resolution: {integrity: sha512-9gux8QhvjRO/erSnDPv28noDZcPZmYE7e1vFsBLKLlRlKDSqNJYebj6Qz1TGd5lsRV+X+xYyjCKjuZdABinWjA==}
 
   htmlparser2@9.1.0:
     resolution: {integrity: sha512-5zfg6mHUoaer/97TxnGpxmbR7zJtPwIYFMZ/H5ucTlPZhKvtum05yiPK3Mgai3a0DyVxv7qYqoweaEd2nrYQzQ==}
@@ -3862,6 +3881,8 @@ snapshots:
 
   colorette@2.0.20: {}
 
+  colorjs.io@0.5.0: {}
+
   commander@2.9.0:
     dependencies:
       graceful-readlink: 1.0.1
@@ -4184,6 +4205,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  fast-average-color@9.4.0: {}
+
   fast-fifo@1.3.2: {}
 
   fast-glob@3.3.2:
@@ -4383,6 +4406,8 @@ snapshots:
   hookable@5.5.3: {}
 
   html-escaper@3.0.3: {}
+
+  html-to-image@1.11.11: {}
 
   htmlparser2@9.1.0:
     dependencies:

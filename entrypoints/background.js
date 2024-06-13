@@ -420,6 +420,23 @@ export default defineBackground({
             text: browser.i18n.getMessage('background_darkPatternDetectionText'),
             color: 'blue',
           });
+
+          // check for interfaceInterference
+          const interferenceRet = await browser.scripting.executeScript({
+            target: {tabId: tabs[0].id, allFrames: true},
+            files: ['checkInterfaceInterference.js'],
+            injectImmediately: true,
+          });
+          const interferenceRes = interferenceRet.map(obj => obj.result);
+          const colorDistance = interferenceRes.find(item => item && item.colorDistance != null)?.colorDistance;
+          console.log('colorDistance of accept and reject', colorDistance);
+          if (colorDistance != null) {
+            scan = await storage.getItem('local:scan');
+            scan.colorDistance = colorDistance;
+            await storage.setItem('local:scan', scan);
+            scan = null;
+          }
+
           // check for forced action - dark pattern
           const forcedActionRet = await browser.scripting.executeScript({
             target: {tabId: tabs[0].id}, files: ['checkForcedAction.js'], injectImmediately: true,
@@ -492,6 +509,10 @@ export default defineBackground({
           await browser.scripting.executeScript({
             target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
+
+          scan = await storage.getItem('local:scan');
+          console.log('scan in the end: ', scan);
+          scan = null;
 
           await browser.scripting.executeScript({
             target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true,

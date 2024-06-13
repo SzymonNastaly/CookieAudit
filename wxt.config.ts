@@ -24,6 +24,7 @@ export default defineConfig({
           'reportCreator.js',
           'retrieveDataFromNotice.js',
           'checkForcedAction.js',
+          'checkInterfaceInterference.js',
         ],
       },
     ],
