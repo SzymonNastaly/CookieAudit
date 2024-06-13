@@ -3,6 +3,7 @@ import {storage} from 'wxt/storage';
 import {clearCookies, cookieListener, storeCookieResults} from './cookieManagement.js';
 import {
   awaitNoDOMChanges,
+  DARK_PATTERN_STATUS,
   INTERACTION_STATE,
   MAX_OTHER_BTN_COUNT,
   NOTICE_STATUS,
@@ -411,6 +412,68 @@ export default defineBackground({
               scan = null;
             }
           }
+
+          // checking dark patterns
+          await browser.tabs.sendMessage(tabs[0].id, {
+            msg: 'popover',
+            title: browser.i18n.getMessage('background_darkPatternDetectionTitle'),
+            text: browser.i18n.getMessage('background_darkPatternDetectionText'),
+            color: 'blue',
+          });
+          // check for forced action - dark pattern
+          const forcedActionRet = await browser.scripting.executeScript({
+            target: {tabId: tabs[0].id}, files: ['checkForcedAction.js'], injectImmediately: true,
+          });
+          /**
+           * @type {string[]}
+           */
+          let nonReachable = forcedActionRet[0].result.nonReachable;
+
+          // click on accept button and wait
+          /**
+           * @type {Interaction}
+           */
+          let interaction = await storage.getItem('local:interaction');
+          interaction.ie = interactiveElements[Purpose.Accept][0];
+          await storage.setItem('local:interaction', interaction);
+          await noticeInteractAndWait(tabs[0].id);
+
+          // check if nonReachable are now reachable
+          const availableRet = await browser.scripting.executeScript({
+            target: {tabId: tabs[0].id}, func: (nonReachable, DARK_PATTERN_STATUS) => {
+              for (let sel of nonReachable) {
+                const el = document.querySelector(sel);
+                const rect = el.getBoundingClientRect();
+                const midX = (rect.left + rect.right) / 2;
+                const midY = (rect.top + rect.bottom) / 2;
+                if (midX < window.innerWidth && midY < window.innerHeight) {
+                  const coordEl = document.elementFromPoint(midX, midY);
+                  if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+                }
+              }
+
+              return {status: DARK_PATTERN_STATUS.NO_FORCED_ACTION};
+            }, injectImmediately: true, args: [nonReachable, DARK_PATTERN_STATUS],
+          });
+
+          /**
+           * @type {number}
+           */
+          const forcedActionStatus = availableRet[0].result.status;
+          if (forcedActionStatus === DARK_PATTERN_STATUS.HAS_FORCED_ACTION) {
+            scan = await storage.getItem('local:scan');
+            scan.forcedActionStatus = forcedActionStatus;
+            await storage.setItem('local:scan', scan);
+            scan = null;
+          }
+          console.log('forcedActionStatus: ', forcedActionStatus);
+
+          // reset cookies and reload page
+          await clearCookies();
+          scan = await storage.getItem('local:scan');
+          await updateTabAndWait(tabs[0].id, scan.url);
+          scan = null;
+
           await browser.tabs.sendMessage(tabs[0].id, {
             msg: 'popover',
             title: browser.i18n.getMessage('background_interactWoBannerTitle'),

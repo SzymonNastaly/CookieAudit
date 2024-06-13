@@ -28,6 +28,12 @@
   "background_ieSuccessTitle": {
     "message": "Success"
   },
+  "background_darkPatternDetectionTitle": {
+    "message": "Info"
+  },
+  "background_darkPatternDetectionText": {
+    "message": "Starting detection of dark patterns in the cookie notice."
+  },
   "background_interactWoBannerText": {
     "message": "Starting interaction with the website (scrolling and clicking on links), while ignoring the cookie banner."
   },

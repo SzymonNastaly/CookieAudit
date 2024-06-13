@@ -30,6 +30,10 @@ export const STAGE2 = Object.freeze({
   FINISHED: 5,
 });
 
+export const DARK_PATTERN_STATUS = Object.freeze({
+  HAS_FORCED_ACTION: 0, NO_FORCED_ACTION: 1,
+});
+
 export const INITIAL_SCAN = {
   stage2: STAGE2.NOT_STARTED,
   'scanStart': null,
@@ -45,6 +49,7 @@ export const INITIAL_SCAN = {
   'aaCookiesAfterSave': [],
   'aaCookiesAfterClose': [],
   'aaCookiesWONoticeInteraction': [],
+  forcedActionStatus: DARK_PATTERN_STATUS.NO_FORCED_ACTION,
 };
 export const INTERACTION_STATE = Object.freeze({
   PAGE_W_NOTICE: 0, PAGE_WO_NOTICE: 1,
@@ -59,6 +64,10 @@ export const MAX_OTHER_BTN_COUNT = 2;
 export const INITIAL_SELECTION = Object.freeze({
   notice: null, interactiveObjects: [], iframeFullIndex: null,
 });
+
+/**
+ * @type {Readonly<Interaction>}
+ */
 export const INITIAL_INTERACTION = Object.freeze({
   ie: null, visitedPages: [],
 });
@@ -197,7 +206,7 @@ export function updateTabAndWait(tabId, url) {
 /**
  *
  * @param {HTMLElement} selected
- * @return {{interactiveObjects: InteractiveObjects, iframeFullIndex: string, notice: Notice}}
+ * @return {Selection}
  */
 export function selectionFromSelectedNotice(selected) {
   let noticeText = extract_text_from_element(selected, true).
@@ -222,9 +231,15 @@ export function selectionFromSelectedNotice(selected) {
     });
   }
 
+  let rect = selected.getBoundingClientRect();
   return {
     notice: {
-      selector: getSingleSelector(selected), text: noticeText, label: null,
+      selector: getSingleSelector(selected), text: noticeText, label: null, rect: {
+        top: Math.floor(rect.top),
+        bottom: Math.ceil(rect.bottom),
+        left: Math.floor(rect.left),
+        right: Math.ceil(rect.right),
+      },
     }, interactiveObjects: interactiveObjects, iframeFullIndex: getFullIframeIndex(window),
   };
 }
@@ -321,6 +336,10 @@ export function element_is_hidden(e) {
   return is_hidden;
 }
 
+/**
+ * @param {HTMLElement} parent
+ * @return {HTMLElement[]}
+ */
 export function get_clickable_elements(parent) {
   let elements = [];
   for (let element of parent.getElementsByTagName('*')) {
