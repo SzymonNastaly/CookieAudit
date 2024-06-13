@@ -2,6 +2,37 @@
 
 ## June 12, 2024
 
+### Detection of Dark Patterns
+
+#### Forced Action
+
+##### First idea
+
+Take interactive elements (links, buttons, etc.) that are not in the cookie notice from the page.
+Then try to click on them and see if something happens.
+Unfortunately, using MouseEvents, we can click on anything (even covered elements).
+
+##### More realistic idea
+
+Take clickable elements from outside the cookie notice and call `document.elementFromPoint()` on their coordinates.
+If the element that is returned is not the original clickable element (or at least a child of it),
+we know that the element is covered.
+Now we need to investigate if it is covered by the cookie notice.
+For this, we click on accept in the cookie notice (and wait for website changes to stop).
+After that, we check again if the element is still covered (same process as before).
+If it is not covered anymore, this implies forced action.
+If it is still covered, it means that it is covered by something unrelated to the cookie notice.
+
+#### Colors
+
+One option is to just take the background color of the button.
+
+Another way would be to take a package like html-to-image
+(maybe export to base64) and then read out dominant color with fast-average-color.
+
+In the report, we could then either include an image of the buttons, or write out the names of the colors.
+Converting a hexcode to a color name is possible with libraries like https://www.npmjs.com/package/color-2-name
+
 ### Fixing processSelectedSettings() for notices that are both first and second layer
 
 If the `inspectBtnAndSettings.js` returns `SAME_NOTICE` this means
