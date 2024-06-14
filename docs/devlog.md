@@ -1,5 +1,23 @@
 # Devlog
 
+## June 14, 2024
+
+### Running on Firefox
+
+We need to define an id (needs to be UUID, or email):
+
+```javascript
+    browser_specific_settings: {
+  gecko: {
+    id: 'cookieaudit@szymonnastaly.com'
+  }
+}
+```
+
+Apparently, Firefox says we are using eval().
+I would guess that this is the call to transformerjs.
+We probably will thus need to move that call to a sandboxed page and communicate via messages with it.
+
 ## June 12, 2024
 
 TODO: the new selector seems to work alright. Continue testing.
