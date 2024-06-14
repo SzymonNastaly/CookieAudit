@@ -1,6 +1,6 @@
 {
-  "name": "wxt-starter",
-  "description": "manifest.json description",
+  "name": "cookie_audit",
+  "description": "Investigate cookie compliance on websites.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

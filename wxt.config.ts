@@ -7,8 +7,9 @@ export default defineConfig({
     plugins: [react()],
   }),
   manifest: {
-    name: '__MSG_ext_name__',
-    description: '__MSG_ext_description__',
+    name: 'Cookie Audit',
+    description: 'Investigate cookie compliance on websites.',
+    version_name: '2024.06.14',
     default_locale: 'en',
     permissions: [
       'cookies',
@@ -18,6 +19,7 @@ export default defineConfig({
       'tabs',
       'scripting',
       'webNavigation'],
+    host_permissions: ['<all_urls>'],
     web_accessible_resources: [
       {
         matches: ['<all_urls>'],
@@ -37,7 +39,6 @@ export default defineConfig({
     ],
     content_security_policy: {
       extension_pages: 'script-src \'self\' \'wasm-unsafe-eval\'; object-src \'self\';',
-      sandbox: 'sandbox allow-scripts allow-forms allow-popups allow-modals; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\'; child-src \'self\';',
     },
   },
 });
