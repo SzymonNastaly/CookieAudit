@@ -26,6 +26,9 @@ importers:
       colorjs.io:
         specifier: ^0.5.0
         version: 0.5.0
+      css-selector-generator:
+        specifier: ^3.6.8
+        version: 3.6.8
       fast-average-color:
         specifier: ^9.4.0
         version: 9.4.0
@@ -1135,6 +1138,9 @@ packages:
 
   css-select@5.1.0:
     resolution: {integrity: sha512-nwoRF1rvRRnnCqqY7updORDsuqKzqYJ28+oSMaJMMgOauh3fvwHqMS7EZpIPqK8GL+g9mKxF1vP/ZjSeNjEVHg==}
+
+  css-selector-generator@3.6.8:
+    resolution: {integrity: sha512-LFWoA20j0rcwGUa38OD6qFaQGKLpFG1xBUzx+wJr/0++34aJ71/YIw2jj6qOaVxiaCEQNrj3HOSepVwiShvyhg==}
 
   css-what@6.1.0:
     resolution: {integrity: sha512-HTUrgRJ7r4dsZKU6GjmpfRK1O76h97Z8MfS1G0FozR+oF2kG6Vfe8JE6zwrkbxigziPHinCJ+gCPjA9EaBDtRw==}
@@ -3938,6 +3944,8 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.1.0
       nth-check: 2.1.1
+
+  css-selector-generator@3.6.8: {}
 
   css-what@6.1.0: {}
 

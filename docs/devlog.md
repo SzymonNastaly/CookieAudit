@@ -2,6 +2,27 @@
 
 ## June 12, 2024
 
+TODO: the new selector seems to work alright. Continue testing.
+TODO: handle buttons that open a new tab/new page
+
+### Observation about element_is_hidden(e)
+
+There are some elements that are hidden via opacity, but still clickable
+(because they have some alternative design above them).
+I don't think this is too important, for now.
+
+### Replacing optimal_select
+
+The old library for finding query selectors is too broken and not up to date.
+The library css-selector-generator seems well maintained - I will try it out.
+
+### Slight changes in get_clickable_elements
+
+I have removed the tabindex and added the cursor style as a characteristic.
+The tabindex was sometimes set on normal divs with text, thus quite error-prone.
+
+## June 12, 2024
+
 ### Detection of Dark Patterns
 
 #### Forced Action

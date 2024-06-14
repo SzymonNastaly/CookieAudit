@@ -284,7 +284,6 @@ export default () => {
   function handleSelectorMessage(message, sender, sendResponse) {
     const {msg} = message;
     if (msg === 'start_select') {
-      console.log('received start_select');
       (async () => {
         const scan = await storage.getItem('local:scan');
 
@@ -342,7 +341,6 @@ export default () => {
      */
     let selection = selectionFromSelectedNotice(selected);
 
-    console.log('selected element is: ', selected);
     setTimeout(() => {
       confirmHandled.current = false;
     }, 500);

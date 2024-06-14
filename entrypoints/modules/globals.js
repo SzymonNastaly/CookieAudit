@@ -8,7 +8,7 @@ Released under the MIT License, see included LICENSE file.
 */
 //-------------------------------------------------------------------------------
 
-import getSingleSelector from './optimal-select2/select.js';
+import {getCssSelector} from 'css-selector-generator';
 
 /**
  * A scan is always in one of these 4 stages.
@@ -222,7 +222,7 @@ export function selectionFromSelectedNotice(selected) {
   for (let i = 0; i < interactiveElements.length; i++) {
     let boundingClientRect = interactiveElements[i].getBoundingClientRect();
     interactiveObjects.push({
-      selector: [getSingleSelector(interactiveElements[i])],
+      selector: [getCssSelector(interactiveElements[i], {root: interactiveElements[i].getRootNode()})],
       text: [
         extract_text_from_element(interactiveElements[i]).
             join(' ')],
@@ -236,7 +236,7 @@ export function selectionFromSelectedNotice(selected) {
   let rect = selected.getBoundingClientRect();
   return {
     notice: {
-      selector: getSingleSelector(selected), text: noticeText, label: null, rect: {
+      selector: getCssSelector(selected, {root: selected.getRootNode()}), text: noticeText, label: null, rect: {
         top: Math.floor(rect.top),
         bottom: Math.ceil(rect.bottom),
         left: Math.floor(rect.left),
@@ -346,8 +346,8 @@ export function get_clickable_elements(parent) {
   let elements = [];
   for (let element of parent.getElementsByTagName('*')) {
     if (!element_is_hidden(element) && ['DIV', 'SPAN', 'A', 'BUTTON', 'INPUT'].includes(element.tagName) &&
-        (element.tabIndex >= 0 || element.getAttribute('role') === 'button' || element.getAttribute('onclick') !==
-            null)) {
+        (element.getAttribute('role') === 'button' || element.getAttribute('onclick') !== null ||
+            window.getComputedStyle(element).cursor === 'pointer')) {
       elements.push(element);
     }
   }

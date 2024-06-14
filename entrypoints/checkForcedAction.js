@@ -1,5 +1,5 @@
+import {getCssSelector} from 'css-selector-generator';
 import {element_is_hidden, get_clickable_elements} from './modules/globals.js';
-import getSingleSelector from './modules/optimal-select2/select.js';
 
 export default defineUnlistedScript(async () => {
   /**
@@ -39,7 +39,7 @@ export default defineUnlistedScript(async () => {
 
     if (!clickableInBody[i].contains(el)) {
       // case: cannot access the actual element at the coordinates
-      nonReachable.push(getSingleSelector(clickableInBody[i]));
+      nonReachable.push(getCssSelector(clickableInBody[i], {root: clickableInBody[i].getRootNode()}));
     }
     if (checkedClickables >= MIN_CLICKABLE_COUNT) {
       break;

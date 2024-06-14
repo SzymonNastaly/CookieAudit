@@ -1,5 +1,5 @@
+import {getCssSelector} from 'css-selector-generator';
 import {extract_text_from_element, get_clickable_elements, SECOND_LVL_STATUS} from './modules/globals.js';
-import getSingleSelector from './modules/optimal-select2/select.js';
 
 export default defineUnlistedScript(async () => {
   /**
@@ -24,7 +24,7 @@ export default defineUnlistedScript(async () => {
   for (let i = 0; i < sndLevelClickable.length; i++) {
     let boundingClientRect = sndLevelClickable[i].getBoundingClientRect();
     interactiveObjects.push({
-      selector: [getSingleSelector(sndLevelClickable[i])],
+      selector: [getCssSelector(sndLevelClickable[i])],
       text: [extract_text_from_element(sndLevelClickable[i]).join(' ')],
       label: null,
       tagName: sndLevelClickable[i].tagName.toLowerCase(),
