@@ -31,8 +31,11 @@ By at least having just `return;` as the last statement, this is fixed.
 
 #### Future necessary change: Sandboxing of BERT usage.
 
-The ONNX runtime (as used by Transformers.js) uses eval(), which isn't allowed in MV3.
-As of now, it still works, but we have to extract this functionality into a sandboxed script.
+The ONNX library uses eval().
+Through the usage of `wasm-unsafe-eval` it still somehow works.
+For Chrome, we could put the transformers.js usage into a sandboxed page.
+But Firefox doesn't support them (at all).
+So when we would need to move to a sandbox, we would break Firefox compatability. 
 
 ## June 12, 2024
 
@@ -48,7 +51,8 @@ I don't think this is too important, for now.
 ### Replacing optimal_select
 
 The old library for finding query selectors is too broken and not up to date.
-The library css-selector-generator seems well maintained - I will try it out.
+The library css-selector-generator seems well maintained.
+I will try it out.
 
 ### Slight changes in get_clickable_elements
 
