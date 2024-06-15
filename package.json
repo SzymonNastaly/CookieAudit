@@ -2,7 +2,6 @@
   "name": "cookie_audit",
   "description": "Investigate cookie compliance on websites.",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -23,7 +22,7 @@
     "colorjs.io": "^0.5.0",
     "css-selector-generator": "^3.6.8",
     "fast-average-color": "^9.4.0",
-    "html-to-image": "^1.11.11",
+    "html-to-image": "1.11.5",
     "pdfmake": "^0.2.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

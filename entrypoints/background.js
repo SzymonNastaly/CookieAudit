@@ -7,12 +7,13 @@ import {
   INTERACTION_STATE,
   MAX_OTHER_BTN_COUNT,
   NOTICE_STATUS,
+  openNotification,
   PAGE_COUNT,
   Purpose,
   resetStorage,
   SECOND_LVL_STATUS,
   STAGE2,
-  updateTabAndWait,
+  updateTab,
   waitStableFrames,
 } from './modules/globals.js';
 
@@ -80,15 +81,15 @@ export default defineBackground({
       }
     }
 
-    async function interactWithPage(tabs) {
+    async function interactWithPageAndWait(tabs) {
       for (let i = 0; i < PAGE_COUNT; i++) {
         let pageRet = await browser.scripting.executeScript({
           target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true,
         });
         let nextUrl = pageRet[0].result;
         if (nextUrl != null) {
-          await updateTabAndWait(tabs[0].id, nextUrl);
-          // await delay(4000);
+          await updateTab(tabs[0].id, nextUrl);
+          await waitStableFrames(tabs[0].id);
           await browser.scripting.executeScript({
             target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
@@ -144,21 +145,18 @@ export default defineBackground({
           // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
           env.backends.onnx.wasm.numThreads = 1;
 
-          await browser.tabs.sendMessage(tabs[0].id, {
-            msg: 'popover',
-            title: browser.i18n.getMessage('background_downloadingModelsTitle'),
-            text: browser.i18n.getMessage('background_downloadingModelsText'),
-            color: 'blue',
+          await waitStableFrames(tabs[0].id);
+          await browser.scripting.executeScript({
+            target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
+          await openNotification(tabs[0].id, browser.i18n.getMessage('background_downloadingModelsTitle'),
+              browser.i18n.getMessage('background_downloadingModelsText'), 'blue');
           await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
           await IEPipelineSingleton.getInstance(USE_QUANTIZED);
 
-          await browser.tabs.sendMessage(tabs[0].id, {
-            msg: 'popover',
-            title: browser.i18n.getMessage('background_startingClassificationTitle'),
-            text: browser.i18n.getMessage('background_startingClassificationText'),
-            color: 'blue',
-          });
+          await openNotification(tabs[0].id, browser.i18n.getMessage('background_startingClassificationTitle'),
+              browser.i18n.getMessage('background_startingClassificationText'), 'blue');
+
           let purposeClassifier = await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
           let purposeDeclared = await translateAndGetPurposeDeclared(purposeClassifier, selection.notice.text);
           if (purposeDeclared) {
@@ -311,7 +309,7 @@ export default defineBackground({
             // reset cookies and reload page
             await clearCookies();
             let scan = await storage.getItem('local:scan');
-            await updateTabAndWait(tabs[0].id, scan.url);
+            await updateTab(tabs[0].id, scan.url);
             scan = null;
             //await delay(4000);
 
@@ -355,12 +353,14 @@ export default defineBackground({
                   [interaction.ie.text[0], interaction.ie.text[1]]);
             }
 
-            await browser.tabs.sendMessage(tabs[0].id, {
-              msg: 'popover', title: browser.i18n.getMessage('background_interactionTitle'), text, color: 'blue',
+            await waitStableFrames(tabs[0].id);
+            await browser.scripting.executeScript({
+              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
             });
+
+            await openNotification(tabs[0].id, browser.i18n.getMessage('background_interactionTitle'), text, 'blue');
             console.log('starting noticeInteractor for interaction: ', interaction);
 
-            await waitStableFrames(tabs[0].id);
             await browser.scripting.executeScript({
               target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
             });
@@ -377,15 +377,11 @@ export default defineBackground({
             }
 
             if (wasSuccess) {
-              await browser.tabs.sendMessage(tabs[0].id, {
-                msg: 'popover',
-                title: browser.i18n.getMessage('background_ieSuccessTitle'),
-                text: browser.i18n.getMessage('background_ieSuccessText'),
-                color: 'blue',
-              });
+              await openNotification(tabs[0].id, browser.i18n.getMessage('background_ieSuccessTitle'),
+                  browser.i18n.getMessage('background_ieSuccessText'), 'blue');
 
               console.log('interacting with page');
-              await interactWithPage(tabs);
+              await interactWithPageAndWait(tabs);
               await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
 
               interaction = await storage.getItem('local:interaction');
@@ -395,31 +391,28 @@ export default defineBackground({
               // reset cookies and reload page
               await clearCookies();
               let scan = await storage.getItem('local:scan');
-              await updateTabAndWait(tabs[0].id, scan.url);
+              await updateTab(tabs[0].id, scan.url);
               scan = null;
             } else if (!wasSuccess) {
-              await browser.tabs.sendMessage(tabs[0].id, {
-                msg: 'popover',
-                title: browser.i18n.getMessage('background_ieErrorTitle'),
-                text: browser.i18n.getMessage('background_ieErrorText'),
-                color: 'red',
-              });
+              await openNotification(tabs[0].id, browser.i18n.getMessage('background_ieErrorTitle'),
+                  browser.i18n.getMessage('background_ieErrorText'), 'red');
 
               // reset cookies and reload page
               await clearCookies();
               let scan = await storage.getItem('local:scan');
-              await updateTabAndWait(tabs[0].id, scan.url);
+              await updateTab(tabs[0].id, scan.url);
               scan = null;
             }
           }
 
-          // checking dark patterns
-          await browser.tabs.sendMessage(tabs[0].id, {
-            msg: 'popover',
-            title: browser.i18n.getMessage('background_darkPatternDetectionTitle'),
-            text: browser.i18n.getMessage('background_darkPatternDetectionText'),
-            color: 'blue',
+          await waitStableFrames(tabs[0].id);
+          await browser.scripting.executeScript({
+            target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
+
+          // checking dark patterns
+          await openNotification(tabs[0].id, browser.i18n.getMessage('background_darkPatternDetectionTitle'),
+              browser.i18n.getMessage('background_darkPatternDetectionText'), 'blue');
 
           // check for interfaceInterference
           const interferenceRet = await browser.scripting.executeScript({
@@ -488,22 +481,20 @@ export default defineBackground({
           // reset cookies and reload page
           await clearCookies();
           scan = await storage.getItem('local:scan');
-          await updateTabAndWait(tabs[0].id, scan.url);
+          await updateTab(tabs[0].id, scan.url);
           scan = null;
 
-          await browser.tabs.sendMessage(tabs[0].id, {
-            msg: 'popover',
-            title: browser.i18n.getMessage('background_interactWoBannerTitle'),
-            text: browser.i18n.getMessage('background_interactWoBannerText'),
-            color: 'blue',
-          });
-
-          // interact with page, while ignoring cookie banner
-          await interactWithPage(tabs);
-          // await delay(2000);
+          await waitStableFrames(tabs[0].id);
           await browser.scripting.executeScript({
             target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
+
+          await openNotification(tabs[0].id, browser.i18n.getMessage('background_interactWoBannerTitle'),
+              browser.i18n.getMessage('background_interactWoBannerText'), 'blue');
+
+          // interact with page, while ignoring cookie banner
+          await interactWithPageAndWait(tabs);
+
           await storeCookieResults(INTERACTION_STATE.PAGE_WO_NOTICE);
           // await delay(2000);
           await browser.scripting.executeScript({
@@ -514,9 +505,12 @@ export default defineBackground({
           console.log('scan in the end: ', scan);
           scan = null;
 
-          await browser.scripting.executeScript({
+          let reportRet = await browser.scripting.executeScript({
             target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true,
           });
+          if (reportRet[0].result !== 'success') {
+            throw new Error('Report creation did not succeed.', {cause: reportRet[0].result});
+          }
 
         })();
       } else if (msg === 'no_notice') {
@@ -539,7 +533,7 @@ export default defineBackground({
           await resetStorage();
           await clearCookies();
           const tabs = await browser.tabs.query({active: true});
-          await updateTabAndWait(tabs[0].id, tabs[0].url);
+          await updateTab(tabs[0].id, tabs[0].url);
           sendResponse({msg: 'ok'});
         })();
         return true;

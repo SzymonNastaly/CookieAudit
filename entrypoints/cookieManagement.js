@@ -165,12 +165,20 @@ export async function clearCookies() {
   }
 
   const tabs = await browser.tabs.query({active: true});
-  await browser.scripting.executeScript({
-    target: {tabId: tabs[0].id, allFrames: true}, injectImmediately: true, func: (() => {
-      window.localStorage.clear();
-      window.sessionStorage.clear();
+  let ret = await browser.scripting.executeScript({
+    target: {tabId: tabs[0].id}, injectImmediately: true, func: (() => {
+      try {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        return 'success';
+      } catch (e) {
+        return `${e.name}: ${e.message}`;
+      }
     }),
   });
+  if (ret[0].result !== 'success') {
+    throw new Error('Clearing of local/session storage not successful.', {cause: ret[0].result});
+  }
 
   await Promise.all(promises);
 

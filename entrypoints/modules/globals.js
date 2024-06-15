@@ -184,7 +184,21 @@ export function waitStableFrames(tabId, t = 2000, pollInterval = 100) {
   });
 }
 
-export function updateTabAndWait(tabId, url) {
+/**
+ * Opens a popover with information for the extension user.
+ * @param {number} tabId
+ * @param {string} title
+ * @param {string} text
+ * @param {string} color
+ * @return {Promise<void>}
+ */
+export async function openNotification(tabId, title, text, color) {
+  await browser.tabs.sendMessage(tabId, {
+    msg: 'popover', title, text, color,
+  });
+}
+
+export function updateTab(tabId, url) {
   return new Promise(async (resolve, reject) => {
     // Function to handle tab updates
     function handleUpdate(updatedTabId, changeInfo, tabInfo) {

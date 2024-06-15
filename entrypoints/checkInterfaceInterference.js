@@ -101,6 +101,8 @@ export default defineUnlistedScript(async () => {
       return {colorDistance: distance};
     } catch (error) {
       console.error('oops, something went wrong!', error);
+      // scripts always need to return explicitly
+
     }
   }
 });

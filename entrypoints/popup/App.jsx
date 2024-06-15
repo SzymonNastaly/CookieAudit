@@ -3,7 +3,7 @@ import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import '@mantine/core/styles.css';
 import {storage} from 'wxt/storage';
-import {STAGE2} from '../modules/globals.js';
+import {openNotification, STAGE2} from '../modules/globals.js';
 
 /**
  * Retrieve Url of the active tab.
@@ -94,22 +94,12 @@ export default function App() {
     let windows = new Set(tabs.map(tab => tab.windowId));
 
     if (windows.size > 1) {
-      const tabs = await browser.tabs.query({active: true});
-      await browser.tabs.sendMessage(tabs[0].id, {
-        msg: 'popover',
-        title: browser.i18n.getMessage('popup_errorTitle'),
-        text: browser.i18n.getMessage('popup_tooManyWindowsText'),
-        color: 'red',
-      });
+      await openNotification(tabs[0].id, browser.i18n.getMessage('popup_errorTitle'),
+          browser.i18n.getMessage('popup_tooManyWindowsText'), 'red');
       return;
     } else if (tabs.length > 1) {
-      const tabs = await browser.tabs.query({active: true});
-      await browser.tabs.sendMessage(tabs[0].id, {
-        msg: 'popover',
-        title: browser.i18n.getMessage('popup_errorTitle'),
-        text: browser.i18n.getMessage('popup_tooManyTabsText'),
-        color: 'red',
-      });
+      await openNotification(tabs[0].id, browser.i18n.getMessage('popup_errorTitle'),
+          browser.i18n.getMessage('popup_tooManyTabsText'), 'red');
       return;
     }
 

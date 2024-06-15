@@ -44,4 +44,6 @@ export default defineUnlistedScript(async () => {
       return link.href; // Stop after navigating to the first suitable link.
     }
   }
+  // scripts always need to return explicitly
+
 });

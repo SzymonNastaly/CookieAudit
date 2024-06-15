@@ -1,10 +1,10 @@
 # Devlog
 
-## June 14, 2024
+## June 15, 2024
 
-### Running on Firefox
+### Making the extension run on Firefox
 
-We need to define an id (needs to be UUID, or email):
+#### For MV3 Firefox wants an extension ID, we define in the config
 
 ```javascript
     browser_specific_settings: {
@@ -14,9 +14,25 @@ We need to define an id (needs to be UUID, or email):
 }
 ```
 
-Apparently, Firefox says we are using eval().
-I would guess that this is the call to transformerjs.
-We probably will thus need to move that call to a sandboxed page and communicate via messages with it.
+#### Waiting before notification
+
+This is a general adaption.
+In some cases (especially after reloading the webpage),
+the notification message was sent before the content script had event mounted.
+We are now waiting until the website has loaded, before sending the message to display the popover notification.
+
+#### Explicit returns from scripting.executeScript content scripts
+
+This is necessary and related to how Firefox gets the return value from the script. It is described
+in https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/scripting/executeScript.
+In the case of a function call as the last statement in the script:
+it wasn't executed and undefined was returned as the result of the script.
+By at least having just `return;` as the last statement, this is fixed.
+
+#### Future necessary change: Sandboxing of BERT usage.
+
+The ONNX runtime (as used by Transformers.js) uses eval(), which isn't allowed in MV3.
+As of now, it still works, but we have to extract this functionality into a sandboxed script.
 
 ## June 12, 2024
 

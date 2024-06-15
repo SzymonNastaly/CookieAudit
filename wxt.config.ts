@@ -9,7 +9,7 @@ export default defineConfig({
   manifest: {
     name: 'Cookie Audit',
     description: 'Investigate cookie compliance on websites.',
-    version_name: '2024.06.14',
+    version: '2024.06.15',
     default_locale: 'en',
     permissions: [
       'cookies',
@@ -20,6 +20,11 @@ export default defineConfig({
       'scripting',
       'webNavigation'],
     host_permissions: ['<all_urls>'],
+    browser_specific_settings: {
+      gecko: {
+        id: 'cookieaudit@szymonnastaly.com',
+      },
+    },
     web_accessible_resources: [
       {
         matches: ['<all_urls>'],
