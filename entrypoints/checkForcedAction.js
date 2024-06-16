@@ -39,7 +39,7 @@ export default defineUnlistedScript(async () => {
 
     if (!clickableInBody[i].contains(el)) {
       // case: cannot access the actual element at the coordinates
-      nonReachable.push(getCssSelector(clickableInBody[i], {root: clickableInBody[i].getRootNode()}));
+      nonReachable.push(getCssSelector(clickableInBody[i], {root: clickableInBody[i].getRootNode(), maxCombinations: 100}));
     }
     if (checkedClickables >= MIN_CLICKABLE_COUNT) {
       break;

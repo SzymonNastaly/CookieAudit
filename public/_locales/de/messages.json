@@ -1,4 +1,10 @@
 {
+  "background_darkPatternDetectionText": {
+    "message": "Die Erkennung von Dark Patterns wurde gestartet."
+  },
+  "background_darkPatternDetectionTitle": {
+    "message": "Info"
+  },
   "background_doubleInteractionText": {
     "message": "Interaktion mit Elementen von zwei Ebenen: <b>$text1$</b> > <b>$text2$</b>",
     "placeholders": {
@@ -98,6 +104,12 @@
   },
   "selector_outerBtn": {
     "message": "Äußeres"
+  },
+  "selector_querySelectorTimeoutText": {
+    "message": "Bitte melden Sie diese Website und den nachfolgenden Fehler an das CookieAudit Team: Timeout beim Finden von querySelectors."
+  },
+  "selector_querySelectorTimeoutTitle": {
+    "message": "Fehler"
   },
   "selector_selectNewNoticeText": {
     "message": "Bitte wählen sie das neuen Banner aus. Die Auswahl beginnt <b>nach</b> dem Schließen dieser Infobox."

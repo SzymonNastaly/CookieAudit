@@ -1,4 +1,10 @@
 {
+  "background_darkPatternDetectionText": {
+    "message": "Starting detection of dark patterns in the cookie notice."
+  },
+  "background_darkPatternDetectionTitle": {
+    "message": "Info"
+  },
   "background_doubleInteractionText": {
     "message": "Starting interaction with a nested button: <b>$text1$</b> > <b>$text2$</b>",
     "placeholders": {
@@ -27,12 +33,6 @@
   },
   "background_ieSuccessTitle": {
     "message": "Success"
-  },
-  "background_darkPatternDetectionTitle": {
-    "message": "Info"
-  },
-  "background_darkPatternDetectionText": {
-    "message": "Starting detection of dark patterns in the cookie notice."
   },
   "background_interactWoBannerText": {
     "message": "Starting interaction with the website (scrolling and clicking on links), while ignoring the cookie banner."
@@ -104,6 +104,12 @@
   },
   "selector_outerBtn": {
     "message": "Outer"
+  },
+  "selector_querySelectorTimeoutText": {
+    "message": "Please report this website and the following error to the CookieAudit team: Timeout while finding querySelectors."
+  },
+  "selector_querySelectorTimeoutTitle": {
+    "message": "Error"
   },
   "selector_selectNewNoticeText": {
     "message": "Please select the new cookie notice that contains the settings. Selection begins <b>after</b> this notice disappears."

@@ -59,6 +59,11 @@ export const INTERACTION_STATE = Object.freeze({
 export const PAGE_COUNT = 1;
 export const MAX_OTHER_BTN_COUNT = 2;
 export const COLOR_DIST_THRESHOLD = 5;
+/**
+ * The maximum time for the calculation of query selectors.
+ * @type {number}
+ */
+export const SELECTOR_TIME_LIMIT = 20000;
 
 /**
  * @type {Readonly<Selection>}
@@ -224,7 +229,7 @@ export function updateTab(tabId, url) {
  * @param {HTMLElement} selected
  * @return {Selection}
  */
-export function selectionFromSelectedNotice(selected) {
+export async function selectionFromSelectedNotice(selected) {
   let noticeText = extract_text_from_element(selected, true).
       join('\n').
       replace(/\s+/g, ' ');
@@ -233,10 +238,11 @@ export function selectionFromSelectedNotice(selected) {
    * @type {InteractiveObjects}
    */
   let interactiveObjects = [];
+  const startTime = Date.now();
   for (let i = 0; i < interactiveElements.length; i++) {
     let boundingClientRect = interactiveElements[i].getBoundingClientRect();
     interactiveObjects.push({
-      selector: [getCssSelector(interactiveElements[i], {root: interactiveElements[i].getRootNode()})],
+      selector: [getCssSelector(interactiveElements[i], {root: interactiveElements[i].getRootNode(), maxCombinations: 100 })],
       text: [
         extract_text_from_element(interactiveElements[i]).
             join(' ')],
@@ -245,12 +251,21 @@ export function selectionFromSelectedNotice(selected) {
       y: [boundingClientRect.y],
       label: null,
     });
+    const currentTime = Date.now(); // Get the current time
+    if (currentTime - startTime > SELECTOR_TIME_LIMIT) {
+      await browser.runtime.sendMessage({
+        msg: 'relay', data: {
+          msg: 'popover', title: browser.i18n.getMessage('selector_querySelectorTimeoutTitle'), text:  browser.i18n.getMessage('selector_querySelectorTimeoutText'), color: 'red',
+        },
+      });
+      return;
+    }
   }
 
   let rect = selected.getBoundingClientRect();
   return {
     notice: {
-      selector: getCssSelector(selected, {root: selected.getRootNode()}), text: noticeText, label: null, rect: {
+      selector: getCssSelector(selected, {root: selected.getRootNode(), maxCombinations: 100}), text: noticeText, label: null, rect: {
         top: Math.floor(rect.top),
         bottom: Math.ceil(rect.bottom),
         left: Math.floor(rect.left),

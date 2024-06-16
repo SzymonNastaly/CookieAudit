@@ -339,7 +339,7 @@ export default () => {
     /**
      * @type {Selection}
      */
-    let selection = selectionFromSelectedNotice(selected);
+    let selection = await selectionFromSelectedNotice(selected);
 
     setTimeout(() => {
       confirmHandled.current = false;
