@@ -17,7 +17,7 @@
     }
   },
   "background_downloadingModelsText": {
-    "message": "Es werden die AI Modelle für die Analyse des Cookiebanners heruntergeladen. Falls diese Browsererweiterung seit längerer Zeit nicht verwendet wurde, könnte der Download etwas länger dauern. Sie können den Fortschritt im Popup oben rechts verfolgen."
+    "message": "Es werden die AI Modelle für die Analyse des Cookiebanners heruntergeladen. Falls CookieAudit seit längerer Zeit nicht verwendet wurde, könnte der Download etwas länger dauern. Sie können den Fortschritt im Popup oben rechts verfolgen."
   },
   "background_downloadingModelsTitle": {
     "message": "Info"
@@ -46,6 +46,12 @@
   "background_interactionTitle": {
     "message": "Info"
   },
+  "background_noNoticeText": {
+    "message": "Diese Funktion wurde noch nicht hinzugefügt."
+  },
+  "background_noNoticeTitle": {
+    "message": "Fehler"
+  },
   "background_singleInteractionText": {
     "message": "Interaction mit Element: <b>$text$</b>",
     "placeholders": {
@@ -72,14 +78,38 @@
   "popup_download": {
     "message": "Modelle für Banneranalyse werden heruntergeladen."
   },
+  "popup_downloadJsonBtn": {
+    "message": "JSON Bericht"
+  },
+  "popup_downloadPdfBtn": {
+    "message": "PDF Bericht"
+  },
   "popup_errorTitle": {
     "message": "Fehler"
+  },
+  "popup_finishedScan": {
+    "message": "CookieAudit hat den Scan beendet."
   },
   "popup_initialInstruction": {
     "message": "Vor dem Start: öffnen Sie die Zielwebsite und schließen alle anderen Tabs/Browserfenster."
   },
+  "popup_invalidWebsite": {
+    "message": "Ein Scan auf der aktuellen Webseite ist nicht möglich."
+  },
   "popup_noNoticeBtn": {
     "message": "Kein Cookiebanner"
+  },
+  "popup_noticeInteraction": {
+    "message": "CookieAudit interagiert mit dem Cookiebanner."
+  },
+  "popup_pageInteraction": {
+    "message": "CookieAudit interagiert aktuell mit der Webseite."
+  },
+  "popup_pleaseResetScan": {
+    "message": "Bitte ersten den Scan resetten."
+  },
+  "popup_secondSelection": {
+    "message": "Bitte wählen Sie das Banner mit den Cookieeinstellungen aus."
   },
   "popup_skipSelection": {
     "message": "Bitte wählen Sie das Cookiebanner aus. Falls es keinen gibt, überspringen Sie die Auswahl unten."
@@ -92,6 +122,12 @@
   },
   "popup_tooManyWindowsText": {
     "message": "Mehr als ein Fenster dieses Browsers ist geöffnet. Bitte schließen sie die anderen Fenster."
+  },
+  "popup_waitForAnalysis": {
+    "message": "Bitte warten Sie, während das Banner analysiert wird."
+  },
+  "popup_waitForLoad": {
+    "message": "Bitte warten Sie, bis die Webseite geladen wurde."
   },
   "selector_cancelBtn": {
     "message": "Abbrechen"

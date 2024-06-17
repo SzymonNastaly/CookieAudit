@@ -26,8 +26,9 @@ export const STAGE2 = Object.freeze({
   NOTICE_SELECTION: 1,
   SECOND_SELECTION: 2,
   NOTICE_INTERACTION: 3,
-  INTERACTION_WO_NOTICE: 4,
-  FINISHED: 5,
+  NOTICE_ANALYSIS: 4,
+  PAGE_INTERACTION: 5,
+  FINISHED: 6,
 });
 
 export const DARK_PATTERN_STATUS = Object.freeze({
@@ -127,6 +128,7 @@ export async function resetStorage() {
     await storage.setItem('local:interaction', INITIAL_INTERACTION),
     await storage.setItem('local:scan', INITIAL_SCAN),
     await storage.setItem('local:progress', INITIAL_PROGRESS),
+    await storage.setItem('local:resetBeforeScan', true),
     await storage.setItem('local:cookies', [])]);
 }
 
@@ -242,7 +244,8 @@ export async function selectionFromSelectedNotice(selected) {
   for (let i = 0; i < interactiveElements.length; i++) {
     let boundingClientRect = interactiveElements[i].getBoundingClientRect();
     interactiveObjects.push({
-      selector: [getCssSelector(interactiveElements[i], {root: interactiveElements[i].getRootNode(), maxCombinations: 100 })],
+      selector: [
+        getCssSelector(interactiveElements[i], {root: interactiveElements[i].getRootNode(), maxCombinations: 100})],
       text: [
         extract_text_from_element(interactiveElements[i]).
             join(' ')],
@@ -255,7 +258,10 @@ export async function selectionFromSelectedNotice(selected) {
     if (currentTime - startTime > SELECTOR_TIME_LIMIT) {
       await browser.runtime.sendMessage({
         msg: 'relay', data: {
-          msg: 'popover', title: browser.i18n.getMessage('selector_querySelectorTimeoutTitle'), text:  browser.i18n.getMessage('selector_querySelectorTimeoutText'), color: 'red',
+          msg: 'popover',
+          title: browser.i18n.getMessage('selector_querySelectorTimeoutTitle'),
+          text: browser.i18n.getMessage('selector_querySelectorTimeoutText'),
+          color: 'red',
         },
       });
       return;
@@ -265,7 +271,10 @@ export async function selectionFromSelectedNotice(selected) {
   let rect = selected.getBoundingClientRect();
   return {
     notice: {
-      selector: getCssSelector(selected, {root: selected.getRootNode(), maxCombinations: 100}), text: noticeText, label: null, rect: {
+      selector: getCssSelector(selected, {root: selected.getRootNode(), maxCombinations: 100}),
+      text: noticeText,
+      label: null,
+      rect: {
         top: Math.floor(rect.top),
         bottom: Math.ceil(rect.bottom),
         left: Math.floor(rect.left),

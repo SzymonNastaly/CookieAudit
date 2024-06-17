@@ -116,7 +116,17 @@ export default defineUnlistedScript(async () => {
         },
       },
     };
-    pdfMake.createPdf(dd).open();
+    let dataUrl = await new Promise(function(resolve, reject) {
+      try {
+        pdfMake.createPdf(dd).getDataUrl((dataUrl) => {
+          resolve(dataUrl);
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+    await storage.setItem('local:report', dataUrl);
+
     return 'success';
   } catch (e) {
     return JSON.stringify(e);

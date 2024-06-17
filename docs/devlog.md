@@ -1,5 +1,12 @@
 # Devlog
 
+## June 17, 2024
+
+* Forcing user to reset the scan/data before starting the first scan
+* Added more information about the stages of the analysis inside the popup
+* PDF report is not opened automatically anymore, but downloaded manually with a button from the popup
+* Added JSON report functionality (to also have a machine-readable output)
+
 ## June 15, 2024
 
 ### Making the extension run on Firefox
@@ -35,7 +42,7 @@ The ONNX library uses eval().
 Through the usage of `wasm-unsafe-eval` it still somehow works.
 For Chrome, we could put the transformers.js usage into a sandboxed page.
 But Firefox doesn't support them (at all).
-So when we would need to move to a sandbox, we would break Firefox compatability. 
+So when we would need to move to a sandbox, we would break Firefox compatability.
 
 ## June 12, 2024
 

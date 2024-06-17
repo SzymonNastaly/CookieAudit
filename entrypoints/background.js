@@ -135,6 +135,11 @@ export default defineBackground({
           if (selection == null) throw new Error('local:selection should be set');
 
           scan = await storage.getItem('local:scan');
+          scan.stage2 = STAGE2.NOTICE_ANALYSIS;
+          await storage.setItem('local:scan', scan);
+          scan = null;
+
+          scan = await storage.getItem('local:scan');
           scan['noticeDetected'] = true;
           await storage.setItem('local:scan', scan);
           scan = null;
@@ -331,6 +336,7 @@ export default defineBackground({
           console.log('ieToInteract, in both levels combined:', ieToInteract);
           scan = await storage.getItem('local:scan');
           scan.ieToInteract = ieToInteract;
+          scan.stage2 = STAGE2.PAGE_INTERACTION;
           await storage.setItem('local:scan', scan);
           let ieToInteractLength = scan.ieToInteract.length;
           scan = null;
@@ -501,14 +507,15 @@ export default defineBackground({
             target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
           });
 
-          scan = await storage.getItem('local:scan');
-          console.log('scan in the end: ', scan);
-          scan = null;
-
           let reportRet = await browser.scripting.executeScript({
             target: {tabId: tabs[0].id}, files: ['reportCreator.js'], injectImmediately: true,
           });
-          if (reportRet[0].result !== 'success') {
+          if (reportRet[0].result === 'success') {
+            scan = await storage.getItem('local:scan');
+            scan.stage2 = STAGE2.FINISHED;
+            await storage.setItem('local:scan', scan);
+            scan = null;
+          } else {
             throw new Error('Report creation did not succeed.', {cause: reportRet[0].result});
           }
 
@@ -520,10 +527,18 @@ export default defineBackground({
           const tabs = await browser.tabs.query({active: true});
           const response = await browser.tabs.sendMessage(tabs[0].id, {msg: 'cancel_select'});
           if (response?.msg !== 'ok') throw new Error('cancel_select not confirmed');
-          let scan = await storage.getItem('local:scan');
-          scan.stage2 = STAGE2.INTERACTION_WO_NOTICE;
-          await storage.setItem('local:scan', scan);
-          scan = null;
+
+          await openNotification(tabs[0].id, browser.i18n.getMessage('background_noNoticeTitle'),
+              browser.i18n.getMessage('background_noNoticeText'), 'red');
+
+          if (browser.cookies.onChanged.hasListener(cookieListener)) {
+            browser.cookies.onChanged.removeListener(cookieListener);
+          }
+          await resetStorage();
+          await clearCookies();
+
+          await updateTab(tabs[0].id, tabs[0].url);
+          sendResponse({msg: 'ok'});
         })();
       } else if (msg === 'cancel_scan') {
         (async () => {

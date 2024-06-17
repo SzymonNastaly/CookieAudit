@@ -1,9 +1,11 @@
-import {Badge, Button, Center, Container, Divider, Group, MantineProvider, Progress, Stack, Text} from '@mantine/core';
+import {Button, Center, Container, Divider, Group, MantineProvider, Progress, Stack, Text} from '@mantine/core';
 import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import '@mantine/core/styles.css';
 import {storage} from 'wxt/storage';
-import {openNotification, STAGE2} from '../modules/globals.js';
+import {
+  classIndexToString, DARK_PATTERN_STATUS, openNotification, Purpose, STAGE2, urlToUniformDomain,
+} from '../modules/globals.js';
 
 /**
  * Retrieve Url of the active tab.
@@ -20,7 +22,12 @@ async function getURL() {
 }
 
 export default function App() {
-  const [startDisabled, setStartDisabled] = useState(false);
+  // User needs to reset the scan before doing the first scan.
+  const [resetBeforeScan, setResetBeforeScan] = useState(false);
+  // Scan is not possible in e.g., the browser settings.
+  const [illegalUrl, setIllegalUrl] = useState(false);
+  // Wait before starting scan while the website is (re)loading.
+  const [isLoading, setIsLoading] = useState(false);
 
   const [ieProgress, setIeProgress] = useState({isDownloading: false, value: 0});
   const [purposeProgress, setPurposeProgress] = useState({isDownloading: false, value: 0});
@@ -28,10 +35,15 @@ export default function App() {
   const [scan, _setScan] = useState(null);
   const scanRef = useRef(null);
 
+  // Once finished, contains a dataUrl of the pdf scan report
+  const [report, setReport] = useState(null);
+
   function setScan(s) {
     _setScan(s);
     scanRef.current = s;
   }
+
+  const startDisabled = !resetBeforeScan || illegalUrl || isLoading;
 
   useEffect(() => {
     storage.getItem('local:scan').then((localScan) => {
@@ -50,11 +62,20 @@ export default function App() {
         });
       }
     });
+    storage.getItem('local:resetBeforeScan').then((wasReset) => {
+      if (wasReset == null) {
+        setResetBeforeScan(false);
+      }
+      setResetBeforeScan(wasReset);
+    });
+    storage.getItem('local:report').then((report) => {
+      setReport(report);
+    });
 
     (async () => {
       const url = await getURL();
       if (url == null || !url.startsWith('http')) {
-        setStartDisabled(true);
+        setIllegalUrl(true);
       }
     })();
 
@@ -71,9 +92,21 @@ export default function App() {
         });
       }
     });
+    const unwatchReset = storage.watch('local:resetBeforeScan', (newWasReset, _) => {
+      if (newWasReset == null) {
+        setResetBeforeScan(false);
+      }
+      setResetBeforeScan(newWasReset);
+    });
+    const unwatchReport = storage.watch('local:report', (newReport, _) => {
+      setReport(newReport);
+    });
 
     return () => {
       unwatchScan();
+      unwatchProgress();
+      unwatchReset();
+      unwatchReport();
     };
   }, []);
 
@@ -117,33 +150,136 @@ export default function App() {
   }
 
   async function cancelScan() {
-    setStartDisabled(true);
+    setIsLoading(true);
     const response = await browser.runtime.sendMessage({msg: 'cancel_scan'});
     console.log('response after cancel_scan', response);
     if (response.msg !== 'ok') throw new Error('cancel_scan was not confirmed by background.js');
-    setStartDisabled(false);
+    setIsLoading(false);
     // close popup
     window.close();
   }
 
-  function warnings(s) {
-    let elements = [];
-    if (s.nonnecessary.length > 0) {
-      elements.push(<Group><Badge color="red">{s.nonnecessary.length}</Badge>Non-essential
-        cookies</Group>);
+  function createJsonReport(scan) {
+    return {
+      url: scan.url,
+      startTime: scan.scanStart,
+      interactiveElements: {
+        accept: scan.interactiveElements[Purpose.Accept],
+        close: scan.interactiveElements[Purpose.Close],
+        settings: scan.interactiveElements[Purpose.Settings],
+        other: scan.interactiveElements[Purpose.Other],
+        reject: scan.interactiveElements[Purpose.Reject],
+        saveSettings: scan.interactiveElements[Purpose.SaveSettings],
+      },
+      purposeDeclared: scan.purposeDeclared,
+      noticeDetected: scan.noticeDetected,
+      rejectDetected: scan.rejectDetected,
+      closeSaveDetected: scan.closeSaveDetected,
+      aaCookiesAfterReject: scan['aaCookiesAfterReject'].map(entry => {
+        entry.aaCookies = entry.aaCookies.map(cookie => {
+          cookie.textLabel = classIndexToString(cookie.current_label);
+          return cookie;
+        });
+        return entry;
+      }),
+      aaCookiesAfterSave: scan.aaCookiesAfterSave.map(entry => {
+        entry.aaCookies = entry.aaCookies.map(cookie => {
+          cookie.textLabel = classIndexToString(cookie.current_label);
+          return cookie;
+        });
+        return entry;
+      }),
+      aaCookiesAfterClose: scan.aaCookiesAfterClose.map(entry => {
+        entry.aaCookies = entry.aaCookies.map(cookie => {
+          cookie.textLabel = classIndexToString(cookie.current_label);
+          return cookie;
+        });
+        return entry;
+      }),
+      aaCookiesWONoticeInteraction: scan.aaCookiesWONoticeInteraction.map(cookie => {
+        cookie.textLabel = classIndexToString(cookie.current_label);
+        return cookie;
+      }),
+      forcedActionStatus: (() => {
+        if (scan.forcedActionStatus === DARK_PATTERN_STATUS.HAS_FORCED_ACTION) {
+          return 'has_forced_action';
+        } else if (scan.forcedActionStatus === DARK_PATTERN_STATUS.NO_FORCED_ACTION) {
+          return 'no_forced_action';
+        } else {
+          return false;
+        }
+      })(),
+      colorDistance: scan.colorDistance,
+    };
+  }
 
-      let cookieWarnings = s.nonnecessary.map((c) => {
-        return <Stack align="flex-start" justify="flex-start"
-                      bg="var(--mantine-color-red-1)" gap="xs"
-                      key={c.name}>
-          <Text>{c.name}</Text>
-          <Text>{c.domain}</Text>
-          <Text>{c.current_label}</Text>
-        </Stack>;
-      });
-      elements.push(<Stack>{cookieWarnings}</Stack>);
+  function InstructionText({scan, resetBeforeScan, illegalUrl, isLoading}) {
+    console.log('resetBeforeScan: ', resetBeforeScan);
+    console.log('illegalUrl: ', illegalUrl);
+    console.log('isLoading: ', isLoading);
+
+    if (!resetBeforeScan) {
+      return (<Text>{browser.i18n.getMessage('popup_pleaseResetScan')}</Text>);
+    } else if (illegalUrl) {
+      return (<Text>{browser.i18n.getMessage('popup_invalidWebsite')}</Text>);
+    } else if (isLoading) {
+      return (<Text>{browser.i18n.getMessage('popup_waitForLoad')}</Text>);
+    } else if (scan != null) {
+      if (isStage(scan, STAGE2.NOT_STARTED)) {
+        return (<Text>{browser.i18n.getMessage('popup_initialInstruction')}</Text>);
+      } else if (isStage(scan, STAGE2.NOTICE_SELECTION)) {
+        return (<Text>{browser.i18n.getMessage('popup_skipSelection')}</Text>);
+      } else if (isStage(scan, STAGE2.SECOND_SELECTION)) {
+        return (<Text>{browser.i18n.getMessage('popup_secondSelection')}</Text>);
+      } else if (isStage(scan, STAGE2.NOTICE_ANALYSIS)) {
+        return (<Text>{browser.i18n.getMessage('popup_waitForAnalysis')}</Text>);
+      } else if (isStage(scan, STAGE2.NOTICE_INTERACTION)) {
+        return (<Text>{browser.i18n.getMessage('popup_noticeInteraction')}</Text>);
+      } else if (isStage(scan, STAGE2.PAGE_INTERACTION)) {
+        return (<Text>{browser.i18n.getMessage('popup_pageInteraction')}</Text>);
+      } else if (isStage(scan, STAGE2.FINISHED)) {
+        return (<Text>{browser.i18n.getMessage('popup_finishedScan')}</Text>);
+      }
     }
-    return elements;
+  }
+
+  function CurrentInteraction({scan, report}) {
+    if (scan == null) {
+      return (<></>);
+    }
+    if (isStage(scan, STAGE2.NOT_STARTED)) {
+      return (<Button variant="light" color="green"
+                      onClick={startScan}
+                      disabled={startDisabled}>{browser.i18n.getMessage('popup_startScanBtn')}</Button>);
+    } else if (isStage(scan, STAGE2.NOTICE_SELECTION)) {
+      return (<Button variant="light" color="orange"
+                      onClick={noNotice}>{browser.i18n.getMessage('popup_noNoticeBtn')}</Button>);
+    } else if (isStage(scan, STAGE2.FINISHED)) {
+      const dataUrl = report;
+      let today = new Date();
+      let uniformDomain = urlToUniformDomain(scan.url);
+      let jsonReport = createJsonReport(scan);
+      let jsonDataUrl = 'data:application/json;base64,' + window.btoa(JSON.stringify(jsonReport, null, 2));
+      let dateString = new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(today);
+      return (<Stack>
+        <Button variant="light" component="a" href={dataUrl}
+                download={`${dateString}_${uniformDomain}_report.pdf`}>{browser.i18n.getMessage(
+            'popup_downloadPdfBtn')}</Button>
+        <Button variant="light" color="grape" component="a" href={jsonDataUrl}
+                download={`${dateString}_${uniformDomain}_report.json`}>{browser.i18n.getMessage(
+            'popup_downloadJsonBtn')}</Button>
+      </Stack>);
+    }
+  }
+
+  function CurrentScan({scan, illegalUrl, isLoading, resetBeforeScan, report}) {
+    return (<Stack justify="center" align="stretch">
+      <InstructionText scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
+                       report={report}/>
+      <CurrentInteraction scan={scan} report={report}/>
+    </Stack>);
   }
 
   return (<MantineProvider>
@@ -152,21 +288,8 @@ export default function App() {
         <Group justify="center">
           <Text>{browser.i18n.getMessage('ext_name')}</Text>
         </Group>
-        <Group justify="center" grow>
-          {isStage(scan, STAGE2.NOT_STARTED) && (<Container>
-            <Text>{browser.i18n.getMessage('popup_initialInstruction')}</Text>
-            <Group justify="center" grow>
-              <Button variant="light" color="green"
-                      onClick={startScan}
-                      disabled={startDisabled}>{browser.i18n.getMessage('popup_startScanBtn')}</Button>
-            </Group>
-          </Container>)}
-          {isStage(scan, STAGE2.NOTICE_SELECTION) && (<Container>
-            <Text>{browser.i18n.getMessage('popup_skipSelection')}</Text>
-            <Button variant="light" color="orange"
-                    onClick={noNotice}>{browser.i18n.getMessage('popup_noNoticeBtn')}</Button>
-          </Container>)}
-        </Group>
+        <CurrentScan scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
+                     report={report}/>
         <Divider my="md"/>
         <Group justify="center" grow>
           {((purposeProgress.value > 0 && purposeProgress.value < 100) ||

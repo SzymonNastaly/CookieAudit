@@ -17,7 +17,7 @@
     }
   },
   "background_downloadingModelsText": {
-    "message": "Starting download of AI models for the analysis of the cookie notice. If the extension has not been used recently, this may take some time. You can follow the progress in the popup on the top right."
+    "message": "Starting download of AI models for the analysis of the cookie notice. If CookieAudit has not been used recently, this may take some time. You can follow the progress in the popup on the top right."
   },
   "background_downloadingModelsTitle": {
     "message": "Info"
@@ -46,6 +46,12 @@
   "background_interactionTitle": {
     "message": "Info"
   },
+  "background_noNoticeText": {
+    "message": "This functionality has not been added yet. Sorry."
+  },
+  "background_noNoticeTitle": {
+    "message": "Error"
+  },
   "background_singleInteractionText": {
     "message": "Starting interaction with button: <b>$text$</b>",
     "placeholders": {
@@ -72,14 +78,38 @@
   "popup_download": {
     "message": "Downloading models for notice analysis."
   },
+  "popup_downloadJsonBtn": {
+    "message": "Download JSON Report"
+  },
+  "popup_downloadPdfBtn": {
+    "message": "Download PDF Report"
+  },
   "popup_errorTitle": {
     "message": "Error"
+  },
+  "popup_finishedScan": {
+    "message": "CookieAudit has finished the scan."
   },
   "popup_initialInstruction": {
     "message": "Open the target website and close all other tabs and browser windows before starting a scan."
   },
+  "popup_invalidWebsite": {
+    "message": "You cannot start a scan on the current website."
+  },
   "popup_noNoticeBtn": {
     "message": "No Cookie Notice"
+  },
+  "popup_noticeInteraction": {
+    "message": "CookieAudit is currently interacting with the notice."
+  },
+  "popup_pageInteraction": {
+    "message": "CookieAudit is currently interacting with the webpage."
+  },
+  "popup_pleaseResetScan": {
+    "message": "Please first reset the scan."
+  },
+  "popup_secondSelection": {
+    "message": "Please select the notice that contains the cookie settings."
   },
   "popup_skipSelection": {
     "message": "Please select the cookie notice. If there is no notice, skip the selection below."
@@ -92,6 +122,12 @@
   },
   "popup_tooManyWindowsText": {
     "message": "More than one window of this browser is open. Please close the other windows."
+  },
+  "popup_waitForAnalysis": {
+    "message": "Please wait while the notice is being analyzed."
+  },
+  "popup_waitForLoad": {
+    "message": "Please wait until the website has finished loading."
   },
   "selector_cancelBtn": {
     "message": "Cancel"
