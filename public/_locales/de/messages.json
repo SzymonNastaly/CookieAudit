@@ -67,10 +67,10 @@
     "message": "Cookie Audit"
   },
   "popup_cancelScanBtn": {
-    "message": "Scan abbrechen"
+    "message": "Reset"
   },
   "popup_download": {
-    "message": "Modelle für Bannererkennung werden heruntergeladen."
+    "message": "Modelle für Banneranalyse werden heruntergeladen."
   },
   "popup_errorTitle": {
     "message": "Fehler"
