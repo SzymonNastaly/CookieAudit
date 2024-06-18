@@ -1,5 +1,17 @@
 # Devlog
 
+## June 18, 2024
+
+* Added an Onboarding page that contains a tutorial for the extension, some explanation about the restrictions,
+  explanation why the specific browser permissions are used and contact information.
+* PLAN: finally the possibility of _stopping_ the execution of a scan by clicking the `Reset & Initialize` button while
+  a scan is running, some parts that would be included in that feature:
+    * starting first download of the models already independently of scans. During the download it should be impossible
+      to start a scan.
+    * the `Reset & Initialize` button should set some local storage to true (maybe `local:stoppingScan`) - while it is
+      true, a new scan should not be able to start
+    * we have to include the check for `local:stoppingScan` especially before and after long-running tasks
+
 ## June 17, 2024
 
 * Forcing user to reset the scan/data before starting the first scan
