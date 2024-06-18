@@ -44,6 +44,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      simpledotcss:
+        specifier: ^2.3.1
+        version: 2.3.1
       sizzle:
         specifier: ^2.3.10
         version: 2.3.10
@@ -2496,6 +2499,9 @@ packages:
 
   simple-swizzle@0.2.2:
     resolution: {integrity: sha512-JA//kQgZtbuY83m+xT+tXJkmJncGMTFT+C+g2h2R9uxkYIrE2yy9sgmcLhCnw57/WSD+Eh3J97FPEDFnbXnDUg==}
+
+  simpledotcss@2.3.1:
+    resolution: {integrity: sha512-O8DlYBFUzCfogF7R1dCi94nvKSc8cFuyqFbHbpqPFNjWrWdCrzLxAqfqGDAg/pXaMvdqZdL0TdHuyO0BYcWhDQ==}
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
@@ -5376,6 +5382,8 @@ snapshots:
   simple-swizzle@0.2.2:
     dependencies:
       is-arrayish: 0.3.2
+
+  simpledotcss@2.3.1: {}
 
   sisteransi@1.0.5: {}
 

@@ -73,7 +73,7 @@
     "message": "Cookie Audit"
   },
   "popup_cancelScanBtn": {
-    "message": "Reset"
+    "message": "Reset & Initialize"
   },
   "popup_download": {
     "message": "Downloading models for notice analysis."
@@ -89,6 +89,9 @@
   },
   "popup_finishedScan": {
     "message": "CookieAudit has finished the scan."
+  },
+  "popup_helpPageLink": {
+    "message": "Help Page"
   },
   "popup_initialInstruction": {
     "message": "Open the target website and close all other tabs and browser windows before starting a scan."

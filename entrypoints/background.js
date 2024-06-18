@@ -97,6 +97,14 @@ export default defineBackground({
       }
     }
 
+    browser.runtime.onInstalled.addListener(async function(object) {
+      let url = browser.runtime.getURL('/onboarding.html');
+      if (object.reason === browser.runtime.OnInstalledReason.INSTALL || object.reason ===
+          browser.runtime.OnInstalledReason.UPDATE) {
+        await browser.tabs.create({url});
+      }
+    });
+
     /**
      * Handlers for all messages sent to the background script.
      */
@@ -445,7 +453,7 @@ export default defineBackground({
            */
           let nonReachable = forcedActionRet[0].result.nonReachable;
 
-          // click on accept button and wait
+          // click the accept button and wait
           /**
            * @type {Interaction}
            */

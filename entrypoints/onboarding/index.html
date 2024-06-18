@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CookieAudit Onboarding</title>
+    <link rel="stylesheet" type="text/css" href="./styles.css">
+</head>
+<body>
+<h1>CookieAudit Extension</h1>
+<p>CookieAudit checks the cookie notices and cookie usage of websites for EU compliance.</p>
+<h3>How it works</h3>
+<p>On a high level, CookieAudit does the following:</p>
+<ul>
+    <li><b>Cookie notice analysis</b>: checking if the cookie notice mentions the purpose of the cookies, forces the
+        user to
+        interact with it, has a different design for Accept/Reject buttons.
+    </li>
+    <li><b>Notice and page interaction</b>: clicking on a button (e.g., Reject) and then scrolling through the website.
+    </li>
+    <li><b>Cookie analysis</b>: after the page interaction, checking the new cookies for advertising/analytics purposes.
+    </li>
+    <li><b>Report</b>: presenting the information in a report.</li>
+</ul>
+<h3>How To</h3>
+<ol>
+    <li>Make sure only <b>one tab</b> and only <b>one window</b> of your browser is open.</li>
+    <li>Inside the popup, <b>Reset</b> and initialize all CookieAudit data.
+        <figure>
+            <img src="reset.gif" alt="visualization of partial selection"/>
+            <figcaption>Always reset first.</figcaption>
+        </figure>
+    </li>
+    <li>Inside the popup, click on <b>Start</b>.</li>
+    <li><b>Select</b> the cookie notice. If this is not possible, select some element inside the notice.
+        <figure>
+            <img src="select_whole.gif" alt="visualization of partial selection"/>
+            <figcaption>Selecting the cookie notice.</figcaption>
+        </figure>
+        <figure>
+            <img src="select_partial.gif" alt="visualization of partial selection"/>
+            <figcaption>Sometimes, only a partial selection is possible.</figcaption>
+        </figure>
+    </li>
+
+
+    <li>Wait while the browser analyzes the cookie notice.</li>
+    <li>On some websites: Select the <b>second level notice</b> that contains the cookie settings.</li>
+    <li>Wait while the browser interacts with the notice and website.</li>
+    <li>Once finished, download the <b>reports</b>: available as PDF or JSON.</li>
+</ol>
+<h3>Restrictions</h3>
+<ul>
+    <li>CookieAudit doesn't handle cookie notices that open a new website/tab for the cookie settings</li>
+    <li>CookieAudit uses AI models to classify cookies, the role of buttons and the meaning of the cookie notice text.
+        It may misclassify any of those.
+    </li>
+</ul>
+<h3>Permissions Explained</h3>
+<p>
+    <b>Storage and Unlimited Storage</b>: The PDF report is temporarily stored in local storage. In extreme cases it may
+    exceed the 5MB limit imposed by Google Chrome.<br/>
+
+    <b>Cookies</b>: CookieAudit needs to analyze all cookies set by the website. <br/>
+
+    <b>Active Tab</b>: CookieAudit needs the url of the current tab to write it into the report. <br/>
+
+    <b>Scripting</b>: CookieAudit executes scripts that, e.g., interact with the current webpage, via the scripting API.
+    <br/>
+
+    <b>Web navigation</b>: CookieAudit reads the number iframes on a webpage (via the webNavigation API) to determine if
+    the page is still loading. <br/>
+</p>
+<h3>Contact Information</h3>
+<p>If you found a bug or have ideas, please contact us at <a href="mailto:cookieaudit@szymonnastaly.com">cookieaudit@szymonnastaly.com</a>.<br/>If
+    you are technically versed, please directly open a GitHub Issue at: <a
+            href="https://github.com/SzymonNastaly/CookieAudit">https://github.com/SzymonNastaly/CookieAudit</a>.</p>
+</body>
+</html>

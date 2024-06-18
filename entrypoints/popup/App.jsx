@@ -1,4 +1,4 @@
-import {Button, Center, Container, Divider, Group, MantineProvider, Progress, Stack, Text} from '@mantine/core';
+import {Anchor, Button, Center, Divider, Group, MantineProvider, Progress, Stack, Text} from '@mantine/core';
 import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import '@mantine/core/styles.css';
@@ -275,34 +275,37 @@ export default function App() {
   }
 
   function CurrentScan({scan, illegalUrl, isLoading, resetBeforeScan, report}) {
-    return (<Stack justify="center" align="stretch">
+    return (<Stack justify="flex-start" align="stretch" >
       <InstructionText scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
                        report={report}/>
       <CurrentInteraction scan={scan} report={report}/>
+      <Divider my="xs"/>
     </Stack>);
   }
 
   return (<MantineProvider>
     <Center maw={800} p={20}>
-      <Stack>
-        <Group justify="center">
-          <Text>{browser.i18n.getMessage('ext_name')}</Text>
-        </Group>
+      <Stack align="stretch"
+             justify="space-around"
+             gap="xs">
+        <Text fw={700} ta="center">CookieAudit</Text>
         <CurrentScan scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
                      report={report}/>
-        <Divider my="md"/>
-        <Group justify="center" grow>
+        <Group justify="center">
           {((purposeProgress.value > 0 && purposeProgress.value < 100) ||
-              (ieProgress.value > 0 && ieProgress.value < 100)) && (<Container>
+              (ieProgress.value > 0 && ieProgress.value < 100)) && (<Stack justify="flex-start" align="stretch">
             <Text>{browser.i18n.getMessage('popup_download')}</Text>
             <Progress
                 value={(purposeProgress.value + ieProgress.value) / 2}/>
-            <Divider my="md"/>
-          </Container>)}
+            <Divider my="xs"/>
+          </Stack>)}
         </Group>
-        <Group justify="center" grow>
-          <Button variant="light" color="red"
-                  onClick={cancelScan}>{browser.i18n.getMessage('popup_cancelScanBtn')}</Button>
+        <Button variant="light" color="red"
+                onClick={cancelScan}>{browser.i18n.getMessage('popup_cancelScanBtn')}</Button>
+        <Group justify="center">
+          <Anchor href={browser.runtime.getURL('/onboarding.html')} target="_blank" size="xs">
+            {browser.i18n.getMessage('popup_helpPageLink')}
+          </Anchor>
         </Group>
       </Stack>
     </Center>
