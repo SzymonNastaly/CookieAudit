@@ -22,7 +22,7 @@ export default defineUnlistedScript(async () => {
   if (el == null) {
     return NOTICE_STATUS.WRONG_SELECTOR;
   }
-  el.dispatchEvent(new MouseEvent('click'));
+  el.click();
 
   return NOTICE_STATUS.SUCCESS;
 });

@@ -103,8 +103,9 @@ export default defineUnlistedScript(async () => {
   let footprintBefore = getFootprint(fstLevelNotice);
 
   let btn = document.querySelector(interaction.ie.selector[0]);
-  btn.dispatchEvent(new MouseEvent('click'));
+  btn.click();
 
+  // TODO: maybe we could make this more dynamic
   await delay(1000);
 
   // find out if we _are_ on a second lvl

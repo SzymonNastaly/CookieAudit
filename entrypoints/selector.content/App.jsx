@@ -12,6 +12,8 @@ export default () => {
   const dialogRef = useRef(null);
   const dataRef = useRef(null);
 
+  const unwatchMousemoveRef = useRef(null);
+
   // Function to call when the selection has been confirmed. Sends response back to background.js
   const sendResponseRef = useRef(null);
 
@@ -108,7 +110,12 @@ export default () => {
   /**
    * Reset all relevant selector state to initial values.
    */
-  function reset() {
+  async function reset() {
+    await storage.setItem('local:mousemoveListenerActive', false);
+    window.removeEventListener('mousemove', mapE);
+    window.removeEventListener('mousedown', handleMousedown);
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('keydown', handleKeydown);
     let domSelectorData = document.querySelector('#dom-selector-data');
     domSelectorData.close();
     setElementHistory([]);
@@ -117,7 +124,6 @@ export default () => {
     setIsSurfing(false);
     isInactive.current = true;
     interactiveElements.current = [];
-    window.removeEventListener('mousedown', handleMousedown);
   }
 
   function totalWidth(rect) {
@@ -180,10 +186,12 @@ export default () => {
    * such parent.
    * @param {MouseEvent} e
    */
-  function handleMousedown(e) {
+  async function handleMousedown(e) {
     if (selectedDOMElementRef.current || isInactive.current) {
       return;
     }
+    await storage.setItem('local:mousemoveListenerActive', false);
+    window.removeEventListener('mousemove', mapE);
     let selected = document.elementFromPoint(e.clientX, e.clientY);
     if (!selected) return;
     if (selected.shadowRoot != null) {
@@ -252,22 +260,29 @@ export default () => {
   }
 
   /**
-   * When a user clicks cancel button inside a selector context menu, we update the stage2 to not_started and call reset()
+   * When a user clicks the cancel button inside a selector context menu, we update the stage2 to not_started and reset all relevant data such that the user can select something new
    */
   async function handleCancelBtn() {
     if (cancelHandled.current) return;
     cancelHandled.current = true;
 
-    let scan = await storage.getItem('local:scan');
-    scan.stage2 = STAGE2.NOT_STARTED;
-    await storage.setItem('local:scan', scan);
-    reset();
-
     let domSelectorData = document.querySelector('#dom-selector-data');
     domSelectorData.close();
+    setElementHistory([]);
+    setSelectedDOMElement(null);
+    setHoveringDOMElement(null);
+    interactiveElements.current = [];
+
+    setIsSurfing(true);
+    isInactive.current = false;
+    await storage.setItem('local:mousemoveListenerActive', true);
+    window.addEventListener('mousemove', mapE);
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('keydown', handleKeydown);
 
     setTimeout(() => {
       cancelHandled.current = false;
+      window.addEventListener('mousedown', handleMousedown, {once: true});
     }, 500);
   }
 
@@ -286,6 +301,7 @@ export default () => {
     if (msg === 'start_select') {
       (async () => {
         const scan = await storage.getItem('local:scan');
+        await storage.setItem('local:mousemoveListenerActive', true);
 
         let text, title;
         if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
@@ -308,17 +324,33 @@ export default () => {
         isInactive.current = false;
         sendResponseRef.current = sendResponse;
         window.addEventListener('mousedown', handleMousedown, {once: true});
+        window.addEventListener('mousemove', mapE);
+        unwatchMousemoveRef.current = storage.watch('local:mousemoveListenerActive', (newValue, oldValue) => {
+          if (newValue === true && oldValue === false) {
+            window.addEventListener('mousemove', mapE);
+          } else if (newValue === false && oldValue === true) {
+            window.removeEventListener('mousemove', mapE);
+          }
+        });
+        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('keydown', handleKeydown);
       })();
       return true;
     } else if (msg === 'cancel_select') {
-      sendResponse({msg: 'ok'});
-      reset();
+      (async () => {
+        await reset();
+        sendResponse({msg: 'ok'});
+      })();
+      return true;
     }
   }
 
   async function handleConfirm() {
     if (confirmHandled.current) return;
     confirmHandled.current = true;
+
+    await storage.setItem('local:mousemoveListenerActive', false);
+    window.removeEventListener('mousemove', mapE);
 
     let domSelectorData = document.querySelector('#dom-selector-data');
     domSelectorData.close();
@@ -334,7 +366,7 @@ export default () => {
 
     let selected = selectedDOMElementRef.current;
     interactiveElements.current = get_clickable_elements(selected);
-    reset();
+    await reset();
 
     /**
      * @type {Selection}
@@ -368,9 +400,9 @@ export default () => {
    * Reset selection on press of escape key.
    * @param {KeyboardEvent} event
    */
-  function handleKeydown(event) {
+  async function handleKeydown(event) {
     if (event.key === 'Escape') {
-      reset();
+      await handleCancelBtn();
     }
   }
 
@@ -386,15 +418,9 @@ export default () => {
   useEffect(() => {
     browser.runtime.onMessage.addListener(handleSelectorMessage);
 
-    //window.addEventListener('mouseover', handleMouseover);
-    //window.addEventListener('mouseout', handleMouseout);
-    window.addEventListener('mousemove', mapE);
-    window.addEventListener('scroll', handleScroll);
-    window.addEventListener('keydown', handleKeydown);
-
-    const unwatchSelection = storage.watch('local:selection', (newSelection, _) => {
+    const unwatchSelection = storage.watch('local:selection', async (newSelection, _) => {
       if (newSelection.notice !== null) {
-        reset();
+        await reset();
       }
     });
 
@@ -405,8 +431,9 @@ export default () => {
       window.removeEventListener('mousemove', mapE);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('mousedown', handleMousedown);
-      window.addEventListener('keydown', handleKeydown);
+      window.removeEventListener('keydown', handleKeydown);
       unwatchSelection();
+      unwatchMousemoveRef.current?.();
     };
   }, []);
 

@@ -120,6 +120,9 @@
   "popup_startScanBtn": {
     "message": "Start Scan"
   },
+  "popup_stoppingScan": {
+    "message": "Please wait while the scan is being stopped."
+  },
   "popup_tooManyTabsText": {
     "message": "More than one tab is open. Please close the other tabs."
   },
@@ -131,6 +134,9 @@
   },
   "popup_waitForLoad": {
     "message": "Please wait until the website has finished loading."
+  },
+  "popup_waitForModels": {
+    "message": "Please wait until the AI models have been downloaded."
   },
   "selector_cancelBtn": {
     "message": "Cancel"

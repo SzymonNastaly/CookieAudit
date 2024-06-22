@@ -11,6 +11,22 @@
     * the `Reset & Initialize` button should set some local storage to true (maybe `local:stoppingScan`) - while it is
       true, a new scan should not be able to start
     * we have to include the check for `local:stoppingScan` especially before and after long-running tasks
+    * we need to detect the stoppingScan also inside the selector (and any other manual parts)
+    * LEARNING: because we sometimes have multiple instances of selector (in each frame), when the `Confirm` button is
+      clicked, the other also need to stop with mapE (and other such things), TODO:
+      understand why it has even worked so far
+    * new msg `stop_select`.
+      it is sent as a response by the `selector` when the selector notices that the scan is to be stopped
+      (the actual textual content is not used so far,
+      but it makes more sense to send that rather than the usual `selected_notice`)
+    * we are now sending (should have done it the whole time), the mount_select message to all frames seperately and
+      wait for the responses from all frames. Only then we can start the selector.
+    * fixed the waitStableFrames method to actually look at the number of frames
+    * TODO: investigate what the purpose of iframes with url about:blank is
+* TODO: force user to not only reset before first scan, but before each scan on each website
+
+* INFO: it would have been nice to move all of the storage into `storage.session` (this way it would be automatically
+  reset whenever the browser is closed), but firefox does not support `storage.session` for content scripts
 
 ## June 17, 2024
 

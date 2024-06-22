@@ -4,11 +4,11 @@ import './App.css';
 import '@mantine/core/styles.css';
 import {storage} from 'wxt/storage';
 import {
-  classIndexToString, DARK_PATTERN_STATUS, openNotification, Purpose, STAGE2, urlToUniformDomain,
+  classIndexToString, DARK_PATTERN_STATUS, openNotification, Purpose, STAGE2, urlToUniformDomain, urlWoQueryOrFragment,
 } from '../modules/globals.js';
 
 /**
- * Retrieve Url of the active tab.
+ * Retrieve a clean (without query parameters or a #fragement) url of the active tab.
  * @returns {Promise<String|null>} Url.
  */
 async function getURL() {
@@ -18,7 +18,7 @@ async function getURL() {
   if (!tab || !tab.url) {
     return null;
   }
-  return tab.url;
+  return urlWoQueryOrFragment(tab.url);
 }
 
 export default function App() {
@@ -28,6 +28,8 @@ export default function App() {
   const [illegalUrl, setIllegalUrl] = useState(false);
   // Wait before starting scan while the website is (re)loading.
   const [isLoading, setIsLoading] = useState(false);
+  // user has instructed extension to stop scan
+  const [stoppingScan, setStoppingScan] = useState(false);
 
   const [ieProgress, setIeProgress] = useState({isDownloading: false, value: 0});
   const [purposeProgress, setPurposeProgress] = useState({isDownloading: false, value: 0});
@@ -43,7 +45,10 @@ export default function App() {
     scanRef.current = s;
   }
 
-  const startDisabled = !resetBeforeScan || illegalUrl || isLoading;
+  const modelsAreDownloading = !(purposeProgress.value === 0 && ieProgress.value === 0) &&
+      !(purposeProgress.value === 100 && ieProgress.value === 100);
+  // user should not be able to start a scan if e.g., a chrome:// page is open, the BERT models are downloading, or a previous scan is currently being stopped
+  const startDisabled = !resetBeforeScan || illegalUrl || isLoading || modelsAreDownloading || stoppingScan;
 
   useEffect(() => {
     storage.getItem('local:scan').then((localScan) => {
@@ -68,17 +73,24 @@ export default function App() {
       }
       setResetBeforeScan(wasReset);
     });
-    storage.getItem('local:report').then((report) => {
-      setReport(report);
+    // contains the dataUrl for a PDF report
+    storage.getItem('local:report').then((v) => {
+      setReport(v);
+    });
+    // stoppingScan is true while the scan abort is not yet finished
+    storage.getItem('local:stoppingScan').then((v) => {
+      setStoppingScan(v);
     });
 
     (async () => {
       const url = await getURL();
+      // catches cases like about:blank, chrome:// and makes it impossible to start a scan on those pages
       if (url == null || !url.startsWith('http')) {
         setIllegalUrl(true);
       }
     })();
 
+    // important: the created watchers have to be stopped later
     const unwatchScan = storage.watch('local:scan', (newScan, _) => {
       setScan(newScan);
     });
@@ -101,12 +113,16 @@ export default function App() {
     const unwatchReport = storage.watch('local:report', (newReport, _) => {
       setReport(newReport);
     });
+    const unwatchStopping = storage.watch('local:stoppingScan', (newStopping, _) => {
+      setStoppingScan(newStopping);
+    });
 
     return () => {
       unwatchScan();
       unwatchProgress();
       unwatchReset();
       unwatchReport();
+      unwatchStopping();
     };
   }, []);
 
@@ -213,20 +229,34 @@ export default function App() {
     };
   }
 
-  function InstructionText({scan, resetBeforeScan, illegalUrl, isLoading}) {
-    console.log('resetBeforeScan: ', resetBeforeScan);
-    console.log('illegalUrl: ', illegalUrl);
-    console.log('isLoading: ', isLoading);
-
-    if (!resetBeforeScan) {
-      return (<Text>{browser.i18n.getMessage('popup_pleaseResetScan')}</Text>);
-    } else if (illegalUrl) {
-      return (<Text>{browser.i18n.getMessage('popup_invalidWebsite')}</Text>);
+  /**
+   * Provides the user with information about what the extension is currently doing (e.g., interacting with the page),
+   * or instructions for the user (e.g., select the cookie notice)
+   * @param scan
+   * @param {boolean} resetBeforeScan
+   * @param {boolean} illegalUrl
+   * @param {boolean} isLoading
+   * @param {boolean} modelsAreDownloading
+   * @param {boolean} stoppingScan
+   * @returns {JSX.Element}
+   * @constructor
+   */
+  function InstructionText({scan, resetBeforeScan, illegalUrl, isLoading, modelsAreDownloading, stoppingScan}) {
+    if (modelsAreDownloading) {
+      return (<Text>{browser.i18n.getMessage('popup_waitForModels')}</Text>);
+    } else if (stoppingScan) {
+      return (<Text>{browser.i18n.getMessage('popup_stoppingScan')}</Text>);
     } else if (isLoading) {
       return (<Text>{browser.i18n.getMessage('popup_waitForLoad')}</Text>);
     } else if (scan != null) {
       if (isStage(scan, STAGE2.NOT_STARTED)) {
-        return (<Text>{browser.i18n.getMessage('popup_initialInstruction')}</Text>);
+        if (!resetBeforeScan) {
+          return (<Text>{browser.i18n.getMessage('popup_pleaseResetScan')}</Text>);
+        } else if (illegalUrl) {
+          return (<Text>{browser.i18n.getMessage('popup_invalidWebsite')}</Text>);
+        } else {
+          return (<Text>{browser.i18n.getMessage('popup_initialInstruction')}</Text>);
+        }
       } else if (isStage(scan, STAGE2.NOTICE_SELECTION)) {
         return (<Text>{browser.i18n.getMessage('popup_skipSelection')}</Text>);
       } else if (isStage(scan, STAGE2.SECOND_SELECTION)) {
@@ -240,9 +270,20 @@ export default function App() {
       } else if (isStage(scan, STAGE2.FINISHED)) {
         return (<Text>{browser.i18n.getMessage('popup_finishedScan')}</Text>);
       }
+    } else if (!resetBeforeScan) {
+      return (<Text>{browser.i18n.getMessage('popup_pleaseResetScan')}</Text>);
+    } else if (illegalUrl) {
+      return (<Text>{browser.i18n.getMessage('popup_invalidWebsite')}</Text>);
     }
   }
 
+  /**
+   * Contains the buttons that are relevant at any point in time, e.g., to start a scan, or to download the PDF & JSON report
+   * @param scan
+   * @param report
+   * @returns {JSX.Element}
+   * @constructor
+   */
   function CurrentInteraction({scan, report}) {
     if (scan == null) {
       return (<></>);
@@ -274,10 +315,21 @@ export default function App() {
     }
   }
 
-  function CurrentScan({scan, illegalUrl, isLoading, resetBeforeScan, report}) {
-    return (<Stack justify="flex-start" align="stretch" >
+  /**
+   * @param scan
+   * @param {boolean} illegalUrl
+   * @param {boolean} isLoading
+   * @param {boolean} resetBeforeScan
+   * @param report
+   * @param {boolean} modelsAreDownloading
+   * @param {boolean} stoppingScan
+   * @returns {JSX.Element}
+   * @constructor
+   */
+  function CurrentScan({scan, illegalUrl, isLoading, resetBeforeScan, report, modelsAreDownloading, stoppingScan}) {
+    return (<Stack justify="flex-start" align="stretch">
       <InstructionText scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
-                       report={report}/>
+                       report={report} modelsAreDownloading={modelsAreDownloading} stoppingScan={stoppingScan}/>
       <CurrentInteraction scan={scan} report={report}/>
       <Divider my="xs"/>
     </Stack>);
@@ -290,17 +342,16 @@ export default function App() {
              gap="xs">
         <Text fw={700} ta="center">CookieAudit</Text>
         <CurrentScan scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
-                     report={report}/>
+                     report={report} modelsAreDownloading={modelsAreDownloading} stoppingScan={stoppingScan}/>
         <Group justify="center">
-          {((purposeProgress.value > 0 && purposeProgress.value < 100) ||
-              (ieProgress.value > 0 && ieProgress.value < 100)) && (<Stack justify="flex-start" align="stretch">
+          {modelsAreDownloading && (<Stack justify="flex-start" align="stretch">
             <Text>{browser.i18n.getMessage('popup_download')}</Text>
             <Progress
                 value={(purposeProgress.value + ieProgress.value) / 2}/>
             <Divider my="xs"/>
           </Stack>)}
         </Group>
-        <Button variant="light" color="red"
+        <Button variant="light" color="red" disabled={stoppingScan}
                 onClick={cancelScan}>{browser.i18n.getMessage('popup_cancelScanBtn')}</Button>
         <Group justify="center">
           <Anchor href={browser.runtime.getURL('/onboarding.html')} target="_blank" size="xs">

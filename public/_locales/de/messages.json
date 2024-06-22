@@ -120,6 +120,9 @@
   "popup_startScanBtn": {
     "message": "Scan starten"
   },
+  "popup_stoppingScan": {
+    "message": "Bitte warten Sie, bis der Scan gestoppt wurde."
+  },
   "popup_tooManyTabsText": {
     "message": "Mehr als ein Tab ist geöffnet. Schließen Sie die anderen Tabs."
   },
@@ -131,6 +134,9 @@
   },
   "popup_waitForLoad": {
     "message": "Bitte warten Sie, bis die Webseite geladen wurde."
+  },
+  "popup_waitForModels": {
+    "message": "Bitte warten Sie, bis die Modelle für die Analyse heruntergeladen wurden."
   },
   "selector_cancelBtn": {
     "message": "Abbrechen"

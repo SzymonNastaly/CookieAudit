@@ -162,32 +162,40 @@ export function getIframeIndex(win) {
   }
 }
 
-export function waitStableFrames(tabId, t = 2000, pollInterval = 100) {
+/**
+ * Waits for the number of iframes in a tab to be stable for some time _t_, polling every _pollInterval_ ms
+ * @param {number} tabId
+ * @param {number} t
+ * @param {number} pollInterval
+ * @returns {Promise<number|'frame_timeout'>}
+ */
+export function waitStableFrames(tabId, t = 1000, pollInterval = 100) {
   return new Promise(async (resolve, _) => {
-    let currentValue = await browser.webNavigation.getAllFrames({tabId: tabId});
+    let frames = await browser.webNavigation.getAllFrames({tabId: tabId});
+    let currentValue = frames.length;
     let startTime = Date.now();
-    let timerId;
-
-    async function checkVariable() {
-      const f = await browser.webNavigation.getAllFrames({tabId: tabId});
-      if (f === currentValue) {
-        if (Date.now() - startTime >= t) {
-          clearInterval(timerId);
-          resolve(f);
-        }
-      } else {
-        currentValue = await browser.webNavigation.getAllFrames({tabId: tabId});
-        startTime = Date.now();
-      }
-    }
-
-    timerId = setInterval(checkVariable, pollInterval);
 
     // timeout to prevent infinite polling
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       clearInterval(timerId);
       resolve('frame_timeout');
     }, t * 3); // Adjust this value as needed
+
+    const timerId = setInterval(async () => {
+      frames = await browser.webNavigation.getAllFrames({tabId: tabId});
+      const f = frames.length;
+      if (f === currentValue) {
+        if (Date.now() - startTime >= t) {
+          clearInterval(timerId);
+          clearTimeout(timeoutId);
+          resolve(f);
+        }
+      } else {
+        frames = await browser.webNavigation.getAllFrames({tabId: tabId});
+        currentValue = frames.length;
+        startTime = Date.now();
+      }
+    }, pollInterval);
   });
 }
 
@@ -205,12 +213,19 @@ export async function openNotification(tabId, title, text, color) {
   });
 }
 
+/**
+ * Reloads the tab, resolves only when the reload is complete
+ * @param {number} tabId
+ * @param {string} url
+ * @returns {Promise<Tab>}
+ */
 export function updateTab(tabId, url) {
   return new Promise(async (resolve, reject) => {
     // Function to handle tab updates
     function handleUpdate(updatedTabId, changeInfo, tabInfo) {
       // Check if the updated tab is the one we're interested in
       if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        console.log('received message that update was complete');
         browser.tabs.onUpdated.removeListener(handleUpdate);
         resolve(tabInfo);
       }
@@ -219,7 +234,7 @@ export function updateTab(tabId, url) {
     browser.tabs.onUpdated.addListener(handleUpdate);
 
     try {
-      await browser.tabs.update(tabId, {url: url});
+      await browser.tabs.update(tabId, {url: urlWoQueryOrFragment(url)});
     } catch (e) {
       reject(new Error(e.message));
     }
@@ -227,12 +242,27 @@ export function updateTab(tabId, url) {
 }
 
 /**
- *
+ * Takes in a string url, returns the same url but with any query parameters or fragment removed
+ * @param {string} url
+ * @returns {string|null} cleanUrl
+ */
+export function urlWoQueryOrFragment(url) {
+  let urlObj = new URL(url);
+  if (URL.canParse(urlObj.pathname, urlObj.href)) {
+    let cleanUrl = new URL(urlObj.pathname, urlObj.href);
+    return cleanUrl.href;
+  } else {
+    return null;
+  }
+
+}
+
+/**
  * @param {HTMLElement} selected
  * @return {Selection}
  */
 export async function selectionFromSelectedNotice(selected) {
-  let noticeText = extract_text_from_element(selected, true).
+  let noticeText = extract_text_from_element(selected, false).
       join('\n').
       replace(/\s+/g, ' ');
   const interactiveElements = get_clickable_elements(selected);
