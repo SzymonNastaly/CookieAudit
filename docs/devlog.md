@@ -6,24 +6,22 @@
   explanation why the specific browser permissions are used and contact information.
 * PLAN: finally the possibility of _stopping_ the execution of a scan by clicking the `Reset & Initialize` button while
   a scan is running, some parts that would be included in that feature:
-    * starting first download of the models already independently of scans. During the download it should be impossible
-      to start a scan.
-    * the `Reset & Initialize` button should set some local storage to true (maybe `local:stoppingScan`) - while it is
-      true, a new scan should not be able to start
-    * we have to include the check for `local:stoppingScan` especially before and after long-running tasks
-    * we need to detect the stoppingScan also inside the selector (and any other manual parts)
+    * if the user stops a scan during the download of the models, it should be impossible to start a new scan
+    * the `Reset & Initialize` button should set some local storage to true
+      (maybe `local:stoppingScan`) which indicates that the scan is currently being stopped -
+      while it is true, a new scan should not be able to start
+    * central idea of how to stop the background:
+      * we wrap the start_scan handler into a new Promise
+      * inside that promise, we set up a storage watcher for `local:stoppingScan`
+      * if stoppingScan gets turned to true, the watcher resolves the Promise (effectively stopping the execution of the handler)
+      * outside the handler, we then reset all storage, cookies, reload the page 
+      * reloading the page is necessary, to also reset/stop the content scripts
     * LEARNING: because we sometimes have multiple instances of selector (in each frame), when the `Confirm` button is
-      clicked, the other also need to stop with mapE (and other such things), TODO:
-      understand why it has even worked so far
-    * new msg `stop_select`.
-      it is sent as a response by the `selector` when the selector notices that the scan is to be stopped
-      (the actual textual content is not used so far,
-      but it makes more sense to send that rather than the usual `selected_notice`)
-    * we are now sending (should have done it the whole time), the mount_select message to all frames seperately and
+      clicked, the other also need to stop with mapE (and other such things) -> completed
+    * we are now sending (should have done it the whole time), the mount_select message to all frames separately and
       wait for the responses from all frames. Only then we can start the selector.
     * fixed the waitStableFrames method to actually look at the number of frames
     * TODO: investigate what the purpose of iframes with url about:blank is
-* TODO: force user to not only reset before first scan, but before each scan on each website
 
 * INFO: it would have been nice to move all of the storage into `storage.session` (this way it would be automatically
   reset whenever the browser is closed), but firefox does not support `storage.session` for content scripts
