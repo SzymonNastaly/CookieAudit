@@ -87,7 +87,7 @@ export const NOTICE_STATUS = Object.freeze({
 });
 
 export const SECOND_LVL_STATUS = Object.freeze({
-  EXTERNAL_ANCHOR: 0, SUCCESS: 1, NEW_NOTICE: 2, SAME_NOTICE: 3, NOT_FOUND: 4,
+  EXTERNAL_ANCHOR: 0, SUCCESS: 1, NEW_NOTICE: 2, SAME_NOTICE: 3, NOT_FOUND: 4, ERROR: 5,
 });
 
 // Function to await no changes being made to the DOM. ChatGPT
@@ -169,7 +169,7 @@ export function getIframeIndex(win) {
  * @param {number} pollInterval
  * @returns {Promise<number|'frame_timeout'>}
  */
-export function waitStableFrames(tabId, t = 1000, pollInterval = 100) {
+export function waitStableFrames(tabId, t = 3000, pollInterval = 100) {
   return new Promise(async (resolve, _) => {
     let frames = await browser.webNavigation.getAllFrames({tabId: tabId});
     let currentValue = frames.length;

@@ -1,5 +1,18 @@
 # Devlog
 
+## June 22, 2024
+
+* cleaning up inspectBtnAndSettings & related background.js code
+    * not throwing Errors anymore (as Errors of executeScript-scripts are not properly handled in Chrome,
+      see [here](https://issues.chromium.org/issues/40205757)), but instead returning a custom status and message object
+      with the error message
+    * removing some console.log statements
+    * simpler handling of the returned value of inspectBtnAndSettings
+
+### Notices that redirect to other URLs
+
+*
+
 ## June 18, 2024
 
 * Added an Onboarding page that contains a tutorial for the extension, some explanation about the restrictions,
@@ -11,11 +24,12 @@
       (maybe `local:stoppingScan`) which indicates that the scan is currently being stopped -
       while it is true, a new scan should not be able to start
     * central idea of how to stop the background:
-      * we wrap the start_scan handler into a new Promise
-      * inside that promise, we set up a storage watcher for `local:stoppingScan`
-      * if stoppingScan gets turned to true, the watcher resolves the Promise (effectively stopping the execution of the handler)
-      * outside the handler, we then reset all storage, cookies, reload the page 
-      * reloading the page is necessary, to also reset/stop the content scripts
+        * we wrap the start_scan handler into a new Promise
+        * inside that promise, we set up a storage watcher for `local:stoppingScan`
+        * if stoppingScan gets turned to true, the watcher resolves the Promise (effectively stopping the execution of
+          the handler)
+        * outside the handler, we then reset all storage, cookies, reload the page
+        * reloading the page is necessary, to also reset/stop the content scripts
     * LEARNING: because we sometimes have multiple instances of selector (in each frame), when the `Confirm` button is
       clicked, the other also need to stop with mapE (and other such things) -> completed
     * we are now sending (should have done it the whole time), the mount_select message to all frames separately and
@@ -23,7 +37,7 @@
     * fixed the waitStableFrames method to actually look at the number of frames
     * TODO: investigate what the purpose of iframes with url about:blank is
 
-* INFO: it would have been nice to move all of the storage into `storage.session` (this way it would be automatically
+* INFO: it would have been nice to move all the storage into `storage.session` (this way it would be automatically
   reset whenever the browser is closed), but firefox does not support `storage.session` for content scripts
 
 ## June 17, 2024

@@ -71,28 +71,33 @@ function noticeNotChanged(fp1, fp2) {
 }
 
 export default defineUnlistedScript(async () => {
-  // START OF FIRST PART = inspectButtonAndNewNotice
+  /**
+   * @type {Interaction}
+   */
   const interaction = await storage.getItem('local:interaction');
   /**
    * @type {Selection}
    */
   const selection = await storage.getItem('local:selection');
-  //const frameIdx = selection.iframeFullIndex;
-  //const selector = interaction.ie.selector;
 
-  if (selection.iframeFullIndex == null) throw new Error('frameIdx in clickNotice was null.');
-  if (interaction.ie.selector == null) throw new Error('selector in clickNotice was null.');
+  if (selection.iframeFullIndex == null) throw new Error('frameIdx in inspectBtnAndSettings was null.');
+  if (interaction.ie.selector == null) throw new Error('selector in inspectBtnAndSettings was null.');
 
   // if the current content script is not in the correct frame, abort
   if (selection.iframeFullIndex !== getFullIframeIndex(window)) return null;
 
   if (interaction.ie.selector.length !== 1) {
-    throw new Error(`malformed query selector in secondLevelDiscovery ${JSON.stringify(interaction.ie.selector)}`);
+    return {
+      status: SECOND_LVL_STATUS.ERROR, msg: `malformed query selector in inspectBtnAndSettings ${JSON.stringify(interaction.ie.selector)}`
+    }
   }
 
   let fstLevelNotice = document.querySelector(selection.notice.selector);
-  if (fstLevelNotice == null) throw new Error(
-      `Query selector for cookie notice did not work: ${selection.notice.selector}`);
+  if (fstLevelNotice == null) {
+    return {
+      status: SECOND_LVL_STATUS.ERROR, msg: `Query selector for cookie notice did not work: ${selection.notice.selector}`
+    }
+  }
 
   if (isExternalAnchor(fstLevelNotice)) {
     return {
@@ -115,31 +120,20 @@ export default defineUnlistedScript(async () => {
   if (sndLevelNotice == null || !sndLevelNotice.checkVisibility() || element_is_hidden(sndLevelNotice) ||
       isCovered(sndLevelNotice)) {
     // the first level notice does not exist anymore, thus something else must be the sndLevelNotice
-    console.log('starting selector inside secondLevelDiscovery.js');
     return {
       status: SECOND_LVL_STATUS.NEW_NOTICE,
     };
-    /*const tabs = await browser.tabs.query({active: true});
-    let response = await browser.tabs.sendMessage(tabs[0].id, {msg: "start_snd_select"});
-    if (response.msg !== "ok") throw new Error("Error from start_snd_select");*/
   }
 
   let footprintAfter = getFootprint(sndLevelNotice);
-  console.log('footprintBefore', footprintBefore);
-  console.log('footprintAfter', footprintAfter);
 
   if (noticeNotChanged(footprintBefore, footprintAfter)) {
     // The first level notice still exists, but it didn't change. Thus, a new notice must have appeared (above it).
-    console.log('starting selector inside secondLevelDiscovery.js');
     return {
       status: SECOND_LVL_STATUS.NEW_NOTICE,
     };
-    /*const tabs = await browser.tabs.query({active: true});
-    let response = await browser.tabs.sendMessage(tabs[0].id, {msg: "start_snd_select"});
-    if (response.msg !== "ok") throw new Error("Error from start_snd_select");*/
   }
   return {
     status: SECOND_LVL_STATUS.SAME_NOTICE,
   };
-  // END OF FIRST PART = inspectButtonAndNewNotice
 });

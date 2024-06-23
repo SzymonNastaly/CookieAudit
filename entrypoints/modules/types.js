@@ -31,6 +31,6 @@
 
 /**
  * @typedef {Object} Interaction
- * @property {InteractiveObject|null} ie - interactive element
+ * @property {InteractiveObject} ie interactive element
  * @property {string[]} visitedPages
  */

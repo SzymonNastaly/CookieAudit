@@ -102,10 +102,12 @@ export default defineBackground({
     browser.runtime.onInstalled.addListener(async function(object) {
       await resetStorage();
       await storage.setItem('local:stoppingScan', false);
-      let url = browser.runtime.getURL('/onboarding.html');
-      if (object.reason === browser.runtime.OnInstalledReason.INSTALL || object.reason ===
-          browser.runtime.OnInstalledReason.UPDATE) {
-        await browser.tabs.create({url});
+      if (object.previousVersion !== browser.runtime.getManifest().version) {
+        let url = browser.runtime.getURL('/onboarding.html');
+        if (object.reason === browser.runtime.OnInstalledReason.INSTALL || object.reason ===
+            browser.runtime.OnInstalledReason.UPDATE) {
+          await browser.tabs.create({url});
+        }
       }
     });
 
@@ -341,20 +343,24 @@ export default defineBackground({
               });
               console.log('inspectRet: ', inspectRet);
 
+              // there should only be one non-null value, which from the frame where the actual notice is
+              const frameRet = inspectRet.find(ret => ret != null);
               let sndLevelNoticeText, sndLevelIntObjs;
-              for (let frameRet of inspectRet) {
-                let inspectResult = frameRet.result;
-                if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.SAME_NOTICE) {
+              if (frameRet != null) {
+                const inspectResult = frameRet.result;
+                if (inspectResult == null) {
+                  reject(new Error('frameRet.result of inspectBtnAndSettings was null'));
+                } else if (inspectResult.status === SECOND_LVL_STATUS.ERROR) {
+                  reject(new Error(inspectResult.msg));
+                } else if (inspectResult.status === SECOND_LVL_STATUS.SAME_NOTICE) {
                   console.log('determined SAME_NOTICE');
                   ({
                     sndLevelNoticeText, sndLevelIntObjs,
                   } = await processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
                       USE_QUANTIZED, true));
-                  break;
-                } else if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
+                } else if (inspectResult.status === SECOND_LVL_STATUS.EXTERNAL_ANCHOR) {
                   console.log('determined EXTERNAL_ANCHOR');
-                  break;
-                } else if (inspectResult != null && inspectResult.status === SECOND_LVL_STATUS.NEW_NOTICE) {
+                } else if (inspectResult.status === SECOND_LVL_STATUS.NEW_NOTICE) {
                   console.log('determined NEW_NOTICE');
                   let scan = await storage.getItem('local:scan');
                   scan.stage2 = STAGE2.SECOND_SELECTION;
@@ -413,14 +419,16 @@ export default defineBackground({
                    * @type {Selection[]}
                    */
                   let secondSelections = await storage.getItem('local:second_selections');
-                  if (secondSelections == null || secondSelections.length === 0) reject(
-                      new Error('local:second_selections should be set'));
+                  if (secondSelections == null || secondSelections.length === 0) {
+                    reject(new Error('local:second_selections should be set'));
+                  }
                   ({
                     sndLevelNoticeText, sndLevelIntObjs,
                   } = await processSelectedSettings(tabs, frameRet, ieClassifier, twoLevelInteractiveElements, iElement,
                       USE_QUANTIZED, false));
-                  break;
                 }
+              } else {
+                reject(new Error('All frames of inspectBtnAndSettings returned null.'));
               }
 
               // reset cookies and reload page
@@ -630,6 +638,8 @@ export default defineBackground({
             } else {
               reject(new Error('Report creation did not succeed.', {cause: reportRet[0].result}));
             }
+          }).catch(e => {
+            console.log('Error during scan: ', e);
           });
 
           if (result === 'scan_stop') {
@@ -648,6 +658,7 @@ export default defineBackground({
             await resetStorage();
             await storage.setItem('local:stoppingScan', false);
             await clearCookies();
+            browser.runtime.reload();
           }
         })();
       } else if (msg === 'no_notice') {
