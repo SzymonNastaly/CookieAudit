@@ -23,7 +23,7 @@ export default defineUnlistedScript(async () => {
       replace(/\s+/g, ' ');
   let sndLevelClickable = get_clickable_elements(sndLevelNotice);
   /**
-   * @type {InteractiveObjects}
+   * @type {InteractiveObject[]}
    */
   let interactiveObjects = [];
   const startTime = Date.now();

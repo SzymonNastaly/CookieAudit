@@ -1,6 +1,20 @@
 # Devlog
 
+### On tabs.onUpdated
+
+* as of 2016, Firefox was often skipping the 'loading
+  state' ([according to this SO thread](https://stackoverflow.com/questions/39028894/tabs-onupdated-addlisteners-changeinfo-status-goes-from-undefined-to-complete-w))
+* on some websites, I get two times the 'complete' status from the loading (rtl.de)
+* the handler get (tabId, changeInfo, tab), the `tab.status` is strictly more accurate than the `changeInfo.status` (the
+  latter is sometimes just undefined if the page is loading)
+
 ## June 22, 2024
+
+* ie interaction actually works for different URL settings.
+  but after clicking on the second button, it doesnt start the page interaction
+
+TODO: inspect if console.log('twoLevelInteractiveElements', twoLevelInteractiveElements);
+is correct inside handleNewNotice on new website case
 
 * cleaning up inspectBtnAndSettings & related background.js code
     * not throwing Errors anymore (as Errors of executeScript-scripts are not properly handled in Chrome,
@@ -11,7 +25,9 @@
 
 ### Notices that redirect to other URLs
 
-*
+* we need to separate the functionality of inspectBtnAndSettings into two separate content scripts:
+    * the first that creates a footprint, and clicks on the notice
+    * the second that checks for the existence of a new/same notice
 
 ## June 18, 2024
 

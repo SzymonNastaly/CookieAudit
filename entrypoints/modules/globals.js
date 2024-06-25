@@ -169,7 +169,7 @@ export function getIframeIndex(win) {
  * @param {number} pollInterval
  * @returns {Promise<number|'frame_timeout'>}
  */
-export function waitStableFrames(tabId, t = 3000, pollInterval = 100) {
+export function waitStableFrames(tabId, t = 750, pollInterval = 100) {
   return new Promise(async (resolve, _) => {
     let frames = await browser.webNavigation.getAllFrames({tabId: tabId});
     let currentValue = frames.length;
@@ -267,7 +267,7 @@ export async function selectionFromSelectedNotice(selected) {
       replace(/\s+/g, ' ');
   const interactiveElements = get_clickable_elements(selected);
   /**
-   * @type {InteractiveObjects}
+   * @type {InteractiveObject[]}
    */
   let interactiveObjects = [];
   const startTime = Date.now();

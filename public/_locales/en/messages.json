@@ -157,7 +157,7 @@
     "message": "Error"
   },
   "selector_selectNewNoticeText": {
-    "message": "Please select the new cookie notice that contains the settings. Selection begins <b>after</b> this notice disappears."
+    "message": "Please select the new element that contains the cookie settings. Selection begins <b>after</b> this notice disappears."
   },
   "selector_selectNewNoticeTitle": {
     "message": "Important"
@@ -173,5 +173,17 @@
   },
   "selector_selectedBannerTitle": {
     "message": "Info"
+  },
+  "selector_skipNewNoticeSelectBtn": {
+    "message": "No Cookie Settings"
+  },
+  "selector_skipNoticeSelectBtn": {
+    "message": "No Cookie Notice"
+  },
+  "selector_startNewNoticeSelectBtn": {
+    "message": "Select Cookie Settings"
+  },
+  "selector_startNoticeSelectBtn": {
+    "message": "Select Cookie Notice"
   }
 }

@@ -173,5 +173,17 @@
   },
   "selector_selectedBannerTitle": {
     "message": "Info"
+  },
+  "selector_skipNewNoticeSelectBtn": {
+    "message": "Keine Cookie Einstellungen"
+  },
+  "selector_skipNoticeSelectBtn": {
+    "message": "Kein Cookie Banner"
+  },
+  "selector_startNewNoticeSelectBtn": {
+    "message": "Cookie Einstellung auswählen"
+  },
+  "selector_startNoticeSelectBtn": {
+    "message": "Cookie Banner auswählen"
   }
 }
