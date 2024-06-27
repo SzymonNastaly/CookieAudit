@@ -1,17 +1,10 @@
-import {Button, Group, MantineProvider, px, Stack} from '@mantine/core';
-import {Notifications} from '@mantine/notifications';
 import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react';
 import {useEffect, useRef, useState} from 'react';
 import './App.module.css';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
 import {storage} from 'wxt/storage';
 import {get_clickable_elements, selectionFromSelectedNotice, STAGE2} from '../modules/globals.js';
 
 export default () => {
-  const dialogRef = useRef(null);
-  const dataRef = useRef(null);
-
   const unwatchMousemoveRef = useRef(null);
 
   // Function to call when the selection has been confirmed. Sends response back to background.js
@@ -337,6 +330,7 @@ export default () => {
     await storage.setItem('local:mousemoveListenerActive', false);
     window.removeEventListener('mousemove', mapE);
 
+    setIsSurfing(false);
     let domSelectorData = document.querySelector('#dom-selector-data');
     domSelectorData.close();
 
@@ -392,15 +386,6 @@ export default () => {
   }
 
   useEffect(() => {
-    if (dialogRef.current && dataRef.current) {
-      const childHeight = dataRef.current.offsetHeight;
-      dialogRef.current.style.height = `${childHeight}px`;
-      const childWidth = dataRef.current.offsetWidth;
-      dialogRef.current.style.width = `${childWidth}px`;
-    }
-  }, [selectedDOMElement]);
-
-  useEffect(() => {
     browser.runtime.onMessage.addListener(handleSelectorMessage);
 
     const unwatchSelection = storage.watch('local:selection', async (newSelection, _) => {
@@ -422,58 +407,42 @@ export default () => {
     };
   }, []);
 
-  return (<MantineProvider>
-    <Notifications style={{zIndex: 999999999999999}}/>
-    <Stack>
-      <dom-selector
-          popover="manual"
-          className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
-          style={{
-            ...(selectedDOMElement ? wrapStyle(selectedDOMElement, scrollY) : wrapStyle(hoveringDOMElement, scrollY)),
-            pointerEvents: selectedDOMElement ? 'auto' : 'none',
-            userSelect: selectedDOMElement ? 'auto' : 'none',
-          }}>
-        <dialog id="dom-selector-data" ref={dialogRef}>
-          <dom-selector-data style={{
-            display: (selectedDOMElement && isSurfing) ? 'block' : 'none',
-          }} ref={dataRef}>
-            <Group justify="center" grow
-                   style={{marginBottom: px(8)}}>
-              <Button variant="default" size="xs"
-                      leftSection={<IconArrowUp size={14}/>}
-                      disabled={!selectedDOMElementRef.current ||
-                          !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
-                      className={'dom-selector-parent'}
-                      onClick={handleSelectParent}
-                      onMouseDown={handleSelectParent}
-                      onMouseUp={handleSelectParent}>{browser.i18n.getMessage('selector_outerBtn')}</Button>
-              <Button variant="default" size="xs"
-                      leftSection={<IconArrowDown size={14}/>}
-                      disabled={elementHistory.length === 0}
-                      className={'dom-selector-parent'}
-                      onClick={handleSelectChild}
-                      onMouseDown={handleSelectChild}
-                      onMouseUp={handleSelectChild}>{browser.i18n.getMessage('selector_innerBtn')}</Button>
-            </Group>
-            <Group justify="center" grow
-                   style={{marginBottom: px(8)}}>
-              <Button size="xs" variant="light" color="red"
-                      leftSection={<IconX size={14}/>}
-                      className={`dom-selector-closer`}
-                      onClick={handleCancelBtn}
-                      onMouseDown={handleCancelBtn}
-                      onMouseUp={handleCancelBtn}>{browser.i18n.getMessage('selector_cancelBtn')}</Button>
-            </Group>
-            <Group justify="center" grow>
-              <Button size="xs" variant="light" color="green"
-                      leftSection={<IconCheck size={14}/>}
-                      onClick={handleConfirm}
-                      onMouseDown={handleConfirm}
-                      onMouseUp={handleConfirm}>{browser.i18n.getMessage('selector_confirmBtn')}</Button>
-            </Group>
-          </dom-selector-data>
-        </dialog>
-      </dom-selector>
-    </Stack>
-  </MantineProvider>);
+  return (<>
+    <dialog id="dom-selector-data" style={{
+      display: (selectedDOMElement && isSurfing) ? 'flex' : 'none',
+    }}>
+      <div className="button-row">
+        <button
+            disabled={!selectedDOMElementRef.current || !skipZeroAreaNodes(selectedDOMElementRef.current.parentElement)}
+            className={'dom-selector-parent'}
+            onClick={handleSelectParent}
+            onMouseDown={handleSelectParent}
+            onMouseUp={handleSelectParent}><IconArrowUp size={14}/></button>
+        <button
+            disabled={elementHistory.length === 0}
+            className={'dom-selector-parent'}
+            onClick={handleSelectChild}
+            onMouseDown={handleSelectChild}
+            onMouseUp={handleSelectChild}><IconArrowDown size={14}/></button>
+      </div>
+      <button id="cancelBtn"
+              onClick={handleCancelBtn}
+              onMouseDown={handleCancelBtn}
+              onMouseUp={handleCancelBtn}><IconX size={14}/>{browser.i18n.getMessage('selector_cancelBtn')}</button>
+      <button id="confirmBtn"
+              onClick={handleConfirm}
+              onMouseDown={handleConfirm}
+              onMouseUp={handleConfirm}><IconCheck size={14}/>{browser.i18n.getMessage('selector_confirmBtn')}
+      </button>
+    </dialog>
+    <dom-selector
+        popover="manual"
+        className={`${isSurfing ? 'surfing' : 'notSurfing'} ${selectedDOMElement ? 'selected' : 'notSelected'}`}
+        style={{
+          ...(selectedDOMElement ? wrapStyle(selectedDOMElement, scrollY) : wrapStyle(hoveringDOMElement, scrollY)),
+          pointerEvents: selectedDOMElement ? 'auto' : 'none',
+          userSelect: selectedDOMElement ? 'auto' : 'none',
+        }}>
+    </dom-selector>
+  </>);
 };

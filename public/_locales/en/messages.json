@@ -22,6 +22,12 @@
   "background_downloadingModelsTitle": {
     "message": "Info"
   },
+  "background_finishedReportText": {
+    "message": "The report of your scan is ready. You can download it from the popup at the top right."
+  },
+  "background_finishedReportTitle": {
+    "message": "Info"
+  },
   "background_ieErrorText": {
     "message": "The interaction with the button did not work. We are skipping it."
   },

@@ -1,5 +1,7 @@
 import pdfMake from 'pdfmake/build/pdfmake';
-import {classIndexToString, COLOR_DIST_THRESHOLD, DARK_PATTERN_STATUS} from './modules/globals';
+import {
+  classIndexToString, COLOR_DIST_THRESHOLD, DARK_PATTERN_STATUS, ieLabelToString, Purpose,
+} from './modules/globals';
 import * as pdfFonts from './modules/vfs_fonts';
 
 export default defineUnlistedScript(async () => {
@@ -36,6 +38,21 @@ export default defineUnlistedScript(async () => {
           classIndexToString(entry.current_label), entry.domain, entry.name];
       });
     }
+    const colorDistanceTableRows = scan.colorDistances.map(cd => {
+      return [
+        {
+          text: [
+            {text: cd.button1.text[0], bold: true},
+            ' ',
+            {text: `(${ieLabelToString(cd.button1.label)})`, italics: true}],
+        }, {
+          text: [
+            {text: cd.button2.text[0], bold: true},
+            ' ',
+            {text: `(${ieLabelToString(cd.button2.label)})`, italics: true}],
+        }, {text: `${cd.distance}`}];
+    });
+
     pdfMake.vfs = pdfFonts.default;
 
     let dd = {
@@ -61,6 +78,10 @@ export default defineUnlistedScript(async () => {
                 {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
                 text: 'Name', style: 'tableHeader',
               }], ...cookiesAfterClose],
+          }, layout: {
+            fillColor: function(rowIndex, node, columnIndex) {
+              return (rowIndex % 2 === 1) ? '#ced4da' : null;
+            },
           },
         },
         {
@@ -73,6 +94,10 @@ export default defineUnlistedScript(async () => {
                 {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
                 text: 'Name', style: 'tableHeader',
               }], ...aaCookiesAfterReject],
+          }, layout: {
+            fillColor: function(rowIndex, node, columnIndex) {
+              return (rowIndex % 2 === 1) ? '#ced4da' : null;
+            },
           },
         },
         {
@@ -85,6 +110,10 @@ export default defineUnlistedScript(async () => {
                 {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
                 text: 'Name', style: 'tableHeader',
               }], ...aaCookiesAfterSave],
+          }, layout: {
+            fillColor: function(rowIndex, node, columnIndex) {
+              return (rowIndex % 2 === 1) ? '#ced4da' : null;
+            },
           },
         },
         {
@@ -97,13 +126,31 @@ export default defineUnlistedScript(async () => {
                 {text: 'Class', style: 'tableHeader'}, {text: 'Domain', style: 'tableHeader'}, {
                 text: 'Name', style: 'tableHeader',
               }], ...aaCookiesWONoticeInteraction],
+          }, layout: {
+            fillColor: function(rowIndex, node, columnIndex) {
+              return (rowIndex % 2 === 1) ? '#ced4da' : null;
+            },
           },
         },
+        {text: 'Dark Patterns', style: 'subheader'},
+        `The color differences between the Accept button and Reject/Settings/Save-Settings buttons. 
+        As a metric we use E_ITP (specification can be found in ITU-R BT.2124-0).
+        It is scaled such that on a perfect display a distance of 1 is barely noticeable.
+        A distance of more then 25 starts to be meaningful.\n\n`,
         {
-          text: 'Dark Patterns', style: 'subheader',
+          table: {
+            headerRows: 1, widths: ['*', '*', 'auto'], body: [
+              [
+                {text: 'Button 1', style: 'tableHeader'},
+                {text: 'Button 2', style: 'tableHeader'},
+                {text: 'Color Difference', style: 'tableHeader'}], ...colorDistanceTableRows],
+          }, layout: {
+            fillColor: function(rowIndex, node, columnIndex) {
+              return (rowIndex % 2 === 1) ? '#ced4da' : null;
+            },
+          },
         },
-        `Accept button has different styling then other buttons: ${scan.colorDistance > COLOR_DIST_THRESHOLD}`,
-        `The user is forced to interact with the cookie notice: ${scan.forcedActionStatus ===
+        `\n The user is forced to interact with the cookie notice: ${scan.forcedActionStatus ===
         DARK_PATTERN_STATUS.HAS_FORCED_ACTION}`], styles: {
         header: {
           fontSize: 18, bold: true,

@@ -45,10 +45,10 @@ export default function App() {
     scanRef.current = s;
   }
 
-  const modelsAreDownloading = !(purposeProgress.value === 0 && ieProgress.value === 0) &&
-      !(purposeProgress.value === 100 && ieProgress.value === 100);
+  const modelsAreDownloading = (purposeProgress.value + ieProgress.value > 0) &&
+      (purposeProgress.value + ieProgress.value < 200);
   // user should not be able to start a scan if e.g., a chrome:// page is open, the BERT models are downloading, or a previous scan is currently being stopped
-  const startDisabled = !resetBeforeScan || illegalUrl || isLoading || modelsAreDownloading || stoppingScan;
+  const startDisabled = !resetBeforeScan || illegalUrl || isLoading || stoppingScan;
 
   useEffect(() => {
     storage.getItem('local:scan').then((localScan) => {
@@ -242,9 +242,7 @@ export default function App() {
    * @constructor
    */
   function InstructionText({scan, resetBeforeScan, illegalUrl, isLoading, modelsAreDownloading, stoppingScan}) {
-    if (modelsAreDownloading) {
-      return (<Text>{browser.i18n.getMessage('popup_waitForModels')}</Text>);
-    } else if (stoppingScan) {
+    if (stoppingScan) {
       return (<Text>{browser.i18n.getMessage('popup_stoppingScan')}</Text>);
     } else if (isLoading) {
       return (<Text>{browser.i18n.getMessage('popup_waitForLoad')}</Text>);
@@ -262,6 +260,9 @@ export default function App() {
       } else if (isStage(scan, STAGE2.SECOND_SELECTION)) {
         return (<Text>{browser.i18n.getMessage('popup_secondSelection')}</Text>);
       } else if (isStage(scan, STAGE2.NOTICE_ANALYSIS)) {
+        if (modelsAreDownloading) {
+          return (<Text>{browser.i18n.getMessage('popup_waitForModels')}</Text>);
+        }
         return (<Text>{browser.i18n.getMessage('popup_waitForAnalysis')}</Text>);
       } else if (isStage(scan, STAGE2.NOTICE_INTERACTION)) {
         return (<Text>{browser.i18n.getMessage('popup_noticeInteraction')}</Text>);

@@ -51,7 +51,7 @@ export const INITIAL_SCAN = {
   'aaCookiesAfterClose': [],
   'aaCookiesWONoticeInteraction': [],
   forcedActionStatus: DARK_PATTERN_STATUS.NO_FORCED_ACTION,
-  colorDistance: 0,
+  colorDistances: [],
 };
 export const INTERACTION_STATE = Object.freeze({
   PAGE_W_NOTICE: 0, PAGE_WO_NOTICE: 1,
@@ -561,6 +561,24 @@ export const classStringToIndex = (classStr) => {
       return -1;
   }
 };
+
+// Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5,
+export function ieLabelToString(purpose) {
+  switch (purpose) {
+    case Purpose.Accept:
+      return 'Accept';
+    case Purpose.Close :
+      return 'Close';
+    case Purpose.Settings:
+      return 'Settings';
+    case Purpose.Other:
+      return 'Other';
+    case Purpose.Reject:
+      return 'Reject';
+    case Purpose.SaveSettings:
+      return 'Save Settings';
+  }
+}
 
 // default configuration
 var defaultConfig = undefined;

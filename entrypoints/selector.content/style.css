@@ -10,24 +10,6 @@ dom-selector {
     z-index: 999999999999999999;
     position: fixed;
     background: #1e90ff77;
-    /*    top: 0;
-        left: 0;
-        background: #1e90ff77;
-        border-style: solid;
-        border-color: #ff8c0099;
-        --bt: 1px;
-        --br: 1px;
-        --bb: 1px;
-        --bl: 1px;
-        --mt: 0px;
-        --mr: 0px;
-        --mb: 0px;
-        --ml: 0px;
-        --pt: 0px;
-        --pr: 0px;
-        --pb: 0px;
-        --pl: 0px;
-        border-width: var(--bt) var(--br) var(--bb) var(--bl);*/
 }
 
 .surfing {
@@ -55,49 +37,53 @@ dom-selector.surfing::after {
     inset: 0;
     position: absolute;
     border: 0 solid #20c02077;
-    border-width: var(--pt) var(--pr) var(--pb) var(--pl);
 }
 
-dom-selector-data {
-    z-index: 1;
-    /*display: flex;
-    align-items: baseline;
-    flex-wrap: nowrap;
-    margin: 6px;
-    overflow: hidden;*/
-    padding: 8px 8px 8px 8px;
-    position: absolute;
+#dom-selector-data {
+    padding: 8px;
+    position: fixed;
     inset: 0 auto auto 0;
     box-shadow: 2px 2px 4px 2px #0002, 0 0 0 1px #0001;
     background: #fff;
     border-radius: 6px;
-    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch; /* This ensures that the buttons stretch to fill the dialog */
 }
 
-dom-selector-data.setbelow {
-    top: 100%;
+.button-row {
+    display: flex;
+    justify-content: space-between; /* This spaces the two buttons equally apart */
+}
+.button-row button {
+    flex-basis: 48%; /* Adjusts each button to take up roughly half of the container minus margin */
+    color: #1C6DCF;
+    background-color: #E6F0FC;
 }
 
-dom-selector-data.fromright {
-    right: 0;
-    left: auto;
+#dom-selector-data #cancelBtn {
+    color: #F63941;
+    background-color: #FFEAE9;
 }
 
-dom-selector-data.outside {
-    translate: 0 calc(-100% - 15px);
+#dom-selector-data #confirmBtn {
+    color: #72C218;
+    background-color: #F0F9E6;
 }
 
-dom-selector-data.setbelow {
-    translate: 5px;
+#dom-selector-data button{
+    font-size: 14px;
+    margin: 5px !important;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-dom-selector-data.scrollable {
-    position: fixed;
-    top: 0;
-    left: inherit;
-    right: inherit;
-}
-
-body {
-    background-color: inherit !important;
+#button-container button:hover {
+    transform: translateY(-2px); /* Slightly raises the button when hovered */
 }

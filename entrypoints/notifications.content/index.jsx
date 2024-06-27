@@ -6,7 +6,7 @@ export default defineContentScript({
 
   async main(ctx) {
     const ui = createIntegratedUi(ctx, {
-      name: 'notifications-ui', position: 'inline', onMount(container) {
+      name: 'notifications-ui', position: 'inline', onMount: (container) => {
         // Container is a body, and React warns when creating a root on the body, so create a wrapper div
         const app = document.createElement('div');
         container.append(app);
@@ -15,9 +15,13 @@ export default defineContentScript({
         const root = ReactDOM.createRoot(app);
         root.render(<App/>);
         return root;
+      }, onRemove: (root) => {
+        // Unmount the root when the UI is removed
+        root?.unmount();
       },
     });
-    console.log('mounting notification');
-    ui.mount();
+    if (!ui.mounted) {
+      ui.mount();
+    }
   },
 });

@@ -91,17 +91,19 @@
     text-decoration: none; /* No underlines or other text decorations */
     letter-spacing: normal; /* Standard letter spacing */
 
-    min-height: 20px;
-    height: 20px;
-    padding: 15px 20px; /* Adjust padding to suit your design */
-    background-color: #E0F2FE; /* Very light blue background */
-    color: #0D3B66; /* Very dark blue text */
-    border: none; /* Removes default border */
-    border-radius: 4px; /* Rounded corners */
-    text-align: center; /* Centers text in the button */
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Slight drop shadow */
-    cursor: pointer; /* Changes cursor to pointer on hover */
-    transition: transform 0.2s; /* Smooth transformation for visual feedback */
+    min-height: fit-content;
+    height: fit-content;
+    padding: 5px 15px; /* Adjust padding to suit your design */
+    color: #1C6DCF;
+    background-color: #E6F0FC;
+
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #button-container button:hover {

@@ -22,6 +22,12 @@
   "background_downloadingModelsTitle": {
     "message": "Info"
   },
+  "background_finishedReportText": {
+    "message": "Der Bericht zu Ihrem Scan ist fertig. Sie können ihn im Popup oben rechts herunterladen."
+  },
+  "background_finishedReportTitle": {
+    "message": "Info"
+  },
   "background_ieErrorText": {
     "message": "Die Interaktion mit dem Element hat nicht funktioniert. Wir überspringen es."
   },
@@ -29,7 +35,7 @@
     "message": "Fehler"
   },
   "background_ieSuccessText": {
-    "message": "Die Interaktion mti dem Element war erfolgreich. Wir fangen mit der Seiteninteraktion an: Scrollen und klicken auf Links."
+    "message": "Die Interaktion mit dem Element war erfolgreich. Wir fangen mit der Seiteninteraktion an: Scrollen und klicken auf Links."
   },
   "background_ieSuccessTitle": {
     "message": "Info"
