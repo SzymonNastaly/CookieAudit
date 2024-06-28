@@ -91,8 +91,9 @@ export default defineBackground({
         if (nextUrl != null) {
           await updateTab(tabs[0].id, nextUrl);
           await waitStableFrames(tabs[0].id);
+          let frameIds = await nonBlankFrameIds(tabs[0].id);
           await browser.scripting.executeScript({
-            target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+            target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
           });
         }
       }
@@ -219,8 +220,9 @@ export default defineBackground({
             env.backends.onnx.wasm.numThreads = 1;
 
             await waitStableFrames(tabs[0].id);
+            let frameIds = await nonBlankFrameIds(tabs[0].id);
             await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+              target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
             });
 
             await openNotification(tabs[0].id, browser.i18n.getMessage('background_downloadingModelsTitle'),
@@ -333,8 +335,9 @@ export default defineBackground({
               await storage.setItem('local:interaction', interaction);
               console.log('interaction now: ', interaction);
 
+              let frameIds = await nonBlankFrameIds(tabs[0].id);
               await browser.scripting.executeScript({
-                target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+                target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
               });
 
               tabs = await browser.tabs.query({active: true});
@@ -356,8 +359,9 @@ export default defineBackground({
                   return;
                 } else if (clickResult.status === SECOND_LVL_STATUS.SUCCESS) {
                   await waitStableFrames(tabs[0].id);
+                  let frameIds = await nonBlankFrameIds(tabs[0].id);
                   await browser.scripting.executeScript({
-                    target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+                    target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
                   });
                   tabs = await browser.tabs.query({active: true});
                   const urlAfterClick = tabs[0].url;
@@ -450,14 +454,16 @@ export default defineBackground({
               }
 
               await waitStableFrames(tabs[0].id);
+              let frameIds = await nonBlankFrameIds(tabs[0].id);
               await browser.scripting.executeScript({
-                target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+                target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
               });
 
               await openNotification(tabs[0].id, browser.i18n.getMessage('background_interactionTitle'), text, 'blue');
 
+              frameIds = await nonBlankFrameIds(tabs[0].id);
               await browser.scripting.executeScript({
-                target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+                target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
               });
 
               /**
@@ -504,8 +510,9 @@ export default defineBackground({
               }
             }
             await waitStableFrames(tabs[0].id);
+            frameIds = await nonBlankFrameIds(tabs[0].id);
             await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+              target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
             });
 
             // checking dark patterns
@@ -548,6 +555,7 @@ export default defineBackground({
             interaction.ie = interactiveElements[Purpose.Accept][0];
             await storage.setItem('local:interaction', interaction);
 
+            tabs = await browser.tabs.query({active: true});
             await noticeInteractAndWait(tabs[0].id);
 
             // check if nonReachable are now reachable
@@ -555,12 +563,14 @@ export default defineBackground({
               target: {tabId: tabs[0].id}, func: (nonReachable, DARK_PATTERN_STATUS) => {
                 for (let sel of nonReachable) {
                   const el = document.querySelector(sel);
-                  const rect = el.getBoundingClientRect();
-                  const midX = (rect.left + rect.right) / 2;
-                  const midY = (rect.top + rect.bottom) / 2;
-                  if (midX < window.innerWidth && midY < window.innerHeight) {
-                    const coordEl = document.elementFromPoint(midX, midY);
-                    if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+                  if (el != null) {
+                    const rect = el.getBoundingClientRect();
+                    const midX = (rect.left + rect.right) / 2;
+                    const midY = (rect.top + rect.bottom) / 2;
+                    if (midX < window.innerWidth && midY < window.innerHeight) {
+                      const coordEl = document.elementFromPoint(midX, midY);
+                      if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+                    }
                   }
                 }
 
@@ -584,8 +594,9 @@ export default defineBackground({
             scan = null;
 
             await waitStableFrames(tabs[0].id);
+            frameIds = await nonBlankFrameIds(tabs[0].id);
             await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+              target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
             });
 
             await openNotification(tabs[0].id, browser.i18n.getMessage('background_interactWoBannerTitle'),
@@ -596,9 +607,9 @@ export default defineBackground({
 
             await storeCookieResults(INTERACTION_STATE.PAGE_WO_NOTICE);
 
-            // await delay(2000);
+            frameIds = await nonBlankFrameIds(tabs[0].id);
             await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+              target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
             });
 
             let reportRet = await browser.scripting.executeScript({
@@ -713,8 +724,9 @@ export default defineBackground({
 
       let tabs = await browser.tabs.query({active: true});
       await waitStableFrames(tabs[0].id);
+      let frameIds = await nonBlankFrameIds(tabs[0].id);
       await browser.scripting.executeScript({
-        target: {tabId: tabs[0].id, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+        target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
       });
 
       let frames = await browser.webNavigation.getAllFrames({tabId: tabs[0].id});
@@ -1071,9 +1083,13 @@ export default defineBackground({
         }, timeout);
       });
 
+      let tabs = await browser.tabs.query({active: true});
+      tabId = tabs[0].id;
       await waitStableFrames(tabId);
+
+      let frameIds = await nonBlankFrameIds(tabId);
       await browser.scripting.executeScript({
-        target: {tabId: tabId, allFrames: true}, func: awaitNoDOMChanges, injectImmediately: true,
+        target: {tabId: tabId, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
       });
 
       if (statusCodes.some(code => code === NOTICE_STATUS.SUCCESS)) {
@@ -1101,6 +1117,18 @@ export default defineBackground({
       }*/
 
       return wasSuccess;
+    }
+
+    /**
+     * Returns all frameIds where the url is not about:blank
+     * @param tabId
+     * @returns {Promise<number[]>}
+     */
+    async function nonBlankFrameIds(tabId) {
+      /** @type {GetAllFramesCallbackDetailsItemType[] | null} */
+      let frames = await browser.webNavigation.getAllFrames({tabId: tabId});
+      frames = frames.filter(frame => frame.url !== 'about:blank');
+      return frames.map(frame => frame.frameId);
     }
 
     async function purposeProgress(args) {

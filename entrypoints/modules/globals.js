@@ -94,30 +94,35 @@ export const SECOND_LVL_STATUS = Object.freeze({
 export async function awaitNoDOMChanges(timeout = 2000) {
   return new Promise((resolve) => {
     let timer;
+    let observer;
 
-    let observer = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
+    const cleanup = () => {
+      if (observer) {
         observer.disconnect();
-        timer = null;
         observer = null;
-        resolve('observer');
-      }, timeout);
+      }
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const resolvePromise = (reason) => {
+      cleanup();
+      resolve(reason);
+    };
+
+    observer = new MutationObserver(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => resolvePromise('observer'), timeout);
     });
 
     observer.observe(document.body, {
-      childList: true, subtree: true,
+      childList: true,
+      subtree: true
     });
 
-    // Set initial timer in case there are no mutations
-    if (timer == null) {
-      timer = setTimeout(() => {
-        observer.disconnect();
-        timer = null;
-        observer = null;
-        resolve('initial');
-      }, timeout);
-    }
+    timer = setTimeout(() => resolvePromise('initial'), timeout);
   });
 }
 
