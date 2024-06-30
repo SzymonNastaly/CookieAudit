@@ -18,7 +18,7 @@ const MINTIME = 120000;
 
 /**
  * After an interaction, store the interesting (analytics and advertising) in the scan results.
- * @param interactionState
+ * @param {INTERACTION_STATE} interactionState
  * @return {Promise<void>}
  */
 export async function storeCookieResults(interactionState) {
@@ -65,8 +65,8 @@ export async function storeCookieResults(interactionState) {
 
 /**
  * Construct a string formatted key that uniquely identifies the given cookie object.
- * @param {Object}    cookieDat Stores the cookie data, expects attribute's name, domain and path.
- * @returns {String}  string representing the cookie's key
+ * @param {Cookie|CookieData} cookieDat - Stores the cookie data, expects attribute's name, domain and path.
+ * @returns {String} - the cookie's key
  */
 function constructKeyFromCookie(cookieDat) {
   return `${cookieDat.name};${urlToUniformDomain(cookieDat.domain)};${cookieDat.path}`;
@@ -74,8 +74,8 @@ function constructKeyFromCookie(cookieDat) {
 
 /**
  * Creates a new feature extraction input object from the raw cookie data.
- * @param  {Object} cookie    Raw cookie data as received from the browser.
- * @return {Object}  Feature Extraction input object.
+ * @param  {Cookie} cookie - Raw cookie data as received from the browser.
+ * @return {CookieData} - Feature Extraction input object.
  */
 function createFEInput(cookie) {
   return {
@@ -111,11 +111,13 @@ function createFEInput(cookie) {
 async function updateFEInput(storedFEInput, rawCookie) {
   let updateArray = storedFEInput['variable_data'];
 
+  /** @type {VariableData} */
   let updateStruct = {
     'host_only': rawCookie.hostOnly,
     'http_only': rawCookie.httpOnly,
     'secure': rawCookie.secure,
     'session': rawCookie.session,
+    'expirationDate': rawCookie.expirationDate,
     'expiry': datetimeToExpiry(rawCookie),
     'value': escapeString(rawCookie.value),
     'same_site': escapeString(rawCookie.sameSite),
@@ -134,7 +136,7 @@ async function updateFEInput(storedFEInput, rawCookie) {
 
 /**
  * Insert serialized cookie into IndexedDB storage via a transaction.
- * @param {Object} serializedCookie Cookie to insert into storage.
+ * @param {CookieData} serializedCookie Cookie to insert into storage.
  */
 async function insertCookieIntoStorage(serializedCookie) {
   let ckey = constructKeyFromCookie(serializedCookie);
@@ -189,8 +191,8 @@ export async function clearCookies() {
 
 /**
  * Retrieve serialized cookie from IndexedDB storage via a transaction.
- * @param {Object} cookieDat Raw cookie object that provides name, domain and path.
- * @returns {Promise<Object>} Either the cookie if found, or undefined if not.
+ * @param {Cookie} cookieDat Raw cookie object that provides name, domain and path.
+ * @returns {Promise<CookieData>} Either the cookie if found, or undefined if not.
  */
 async function retrieveCookieFromStorage(cookieDat) {
   let ckey = constructKeyFromCookie(cookieDat);
@@ -207,8 +209,8 @@ async function retrieveCookieFromStorage(cookieDat) {
 
 /**
  * Using the cookie input, extract features from the cookie and classifySentencePurpose it, retrieving a label.
- * @param {Object} newCookie
- * @param  {Object} feature_input   Transformed cookie data input, for the feature extraction.
+ * @param {Cookie} newCookie
+ * @param  {CookieData} feature_input   Transformed cookie data input, for the feature extraction.
  * @return {Promise<Number>}        Cookie category label as an integer, ranging from [0,3].
  */
 async function classifyCookie(newCookie, feature_input) {
@@ -220,13 +222,15 @@ async function classifyCookie(newCookie, feature_input) {
 
 /**
  * Retrieve the cookie and classifySentencePurpose it.
- * @param {Object} newCookie Raw cookie object directly from the browser.
- * @param {Object} storeUpdate Whether
- * @param overrideTimeCheck
+ * @param {Cookie} newCookie Raw cookie object directly from the browser.
+ * @param {boolean} storeUpdate Whether
+ * @param {boolean} overrideTimeCheck
  */
 async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
   // First, if consent is given, check if the cookie has already been stored.
-  let serializedCookie, storedCookie;
+  /** @type {CookieData} */
+  let serializedCookie
+  let storedCookie;
   storedCookie = await retrieveCookieFromStorage(newCookie);
   if (storedCookie) {
     if (storeUpdate) {
@@ -271,7 +275,7 @@ async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
 
 /**
  * Listener that is executed any time a cookie is added, updated or removed.
- * @param {Object} changeInfo  Contains the cookie itself, and cause info.
+ * @param {OnChangedChangeInfoType} changeInfo  Contains the cookie itself, and cause info.
  */
 export async function cookieListener(changeInfo) {
   if (!changeInfo.removed) {

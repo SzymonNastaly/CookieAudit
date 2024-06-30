@@ -32,9 +32,29 @@
 
 /**
  * @typedef {Object} CookieData
- * @property {number} current_label - The current label value.
- * @property {string} domain - The domain associated with the cookie.
  * @property {string} name - The name of the cookie.
+ * @property {string} domain - The domain of the cookie (e.g., "example.com")
+ * @property {string} path - The path of the cookie.
+ * @property {number} current_label - The current label value.
+ * @property {number} label_ts
+ * @property {string} storeId The ID of the cookie store containing this cookie, as provided in getAllCookieStores().
+ * @property {VariableData[]} variable_data
+ */
+
+/**
+ * @typedef {Object} VariableData
+ * @property {boolean} host_only - True if the cookie is a host-only cookie (i.e., a request's host must exactly match the domain of the cookie).
+ * @property {boolean} http_only - True if the cookie is marked as HttpOnly (i.e., the cookie is inaccessible to client-side scripts).
+ * @property {boolean} secure - True if the cookie is marked as Secure (i.e., its scope is limited to secure channels, typically HTTPS).
+ * @property {boolean} session - True if the cookie is a session cookie, as opposed to a persistent cookie with an expiration date.
+ * @property {number} expirationDate - The expiration date of the cookie as the number of seconds since the UNIX epoch.
+ * Not provided for session cookies.
+ * Optional.
+ * @property {number} expiry -
+ * The expiration data of the cookie as the number of seconds since the creation of the VariableData object.
+ * @property {string} value - The value of the cookie.
+ * @property {string} same_site - The cookie's same-site status (i.e., whether the cookie is sent with cross-site requests).
+ * @property {number} timestamp
  */
 
 /**
