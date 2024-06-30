@@ -29,3 +29,16 @@
  * @property {InteractiveObject|null} ie interactive element
  * @property {string[]} visitedPages
  */
+
+/**
+ * @typedef {Object} CookieData
+ * @property {number} current_label - The current label value.
+ * @property {string} domain - The domain associated with the cookie.
+ * @property {string} name - The name of the cookie.
+ */
+
+/**
+ * @typedef {Object.<string, CookieData>} CookieCollection
+ * A collection of cookies, where each key is a string representing the cookie identifier,
+ * and the value is an object containing the cookie data.
+ */

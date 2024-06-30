@@ -18,19 +18,6 @@ import {
   waitStableFrames,
 } from './modules/globals.js';
 
-/**
- * @typedef {Object} CookieData
- * @property {number} current_label - The current label value.
- * @property {string} domain - The domain associated with the cookie.
- * @property {string} name - The name of the cookie.
- */
-
-/**
- * @typedef {Object.<string, CookieData>} CookieCollection
- * A collection of cookies, where each key is a string representing the cookie identifier,
- * and the value is an object containing the cookie data.
- */
-
 // noinspection JSUnusedGlobalSymbols
 export default defineBackground({
   type: 'module', main() {
@@ -79,23 +66,6 @@ export default defineBackground({
         progress.ieDownloading = false;
         await storage.setItem('local:progress', progress);
         return this.instance;
-      }
-    }
-
-    async function interactWithPageAndWait(tabs) {
-      for (let i = 0; i < PAGE_COUNT; i++) {
-        let pageRet = await browser.scripting.executeScript({
-          target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true,
-        });
-        let nextUrl = pageRet[0].result;
-        if (nextUrl != null) {
-          await updateTab(tabs[0].id, nextUrl);
-          await waitStableFrames(tabs[0].id);
-          let frameIds = await nonBlankFrameIds(tabs[0].id);
-          await browser.scripting.executeScript({
-            target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
-          });
-        }
       }
     }
 
@@ -1117,6 +1087,23 @@ export default defineBackground({
       }*/
 
       return wasSuccess;
+    }
+
+    async function interactWithPageAndWait(tabs) {
+      for (let i = 0; i < PAGE_COUNT; i++) {
+        let pageRet = await browser.scripting.executeScript({
+          target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true,
+        });
+        let nextUrl = pageRet[0].result;
+        if (nextUrl != null) {
+          await updateTab(tabs[0].id, nextUrl);
+          await waitStableFrames(tabs[0].id);
+          let frameIds = await nonBlankFrameIds(tabs[0].id);
+          await browser.scripting.executeScript({
+            target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
+          });
+        }
+      }
     }
 
     /**
