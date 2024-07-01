@@ -1,6 +1,4 @@
 import {useEffect, useRef, useState} from 'react';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
 import './styles.css';
 import {delay} from '../modules/globals.js';
 
