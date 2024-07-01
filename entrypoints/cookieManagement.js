@@ -17,58 +17,11 @@ const UPDATE_LIMIT = 10;
 const MINTIME = 120000;
 
 /**
- * After an interaction, store the interesting (analytics and advertising) in the scan results.
- * @param {INTERACTION_STATE} interactionState
- * @return {Promise<void>}
- */
-export async function storeCookieResults(interactionState) {
-  /**
-   * @type {CookieCollection}
-   */
-  const cookiesAfterInteraction = await storage.getItem('local:cookies');
-  let aaCookies = [];
-  // if rejection, there should be no AA cookies
-  console.log('cookiesAfterInteraction', cookiesAfterInteraction);
-  for (const cookieKey in cookiesAfterInteraction) {
-    let cookie = cookiesAfterInteraction[cookieKey];
-    if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
-  }
-  let scan = await storage.getItem('local:scan');
-  const interaction = await storage.getItem('local:interaction');
-
-  if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
-    // analyze cookies after interaction with both notice and page
-
-    if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
-      if (aaCookies.length > 0) {
-        const entry = {
-          ie: interaction.ie, aaCookies: aaCookies,
-        };
-        if (interaction.ie.label === Purpose.Reject) {
-          scan.aaCookiesAfterReject.push(entry);
-        } else if (interaction.ie.label === Purpose.SaveSettings) {
-          scan.aaCookiesAfterSave.push(entry);
-        } else if (interaction.ie.label === Purpose.Close) {
-          scan.aaCookiesAfterClose.push(entry);
-        }
-
-      }
-    }
-  } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
-    // analyze cookies after interaction with only page and ignoring notice
-    if (aaCookies.length > 0) { // AA cookies after reject
-      scan.aaCookiesWONoticeInteraction = aaCookies;
-    }
-  }
-  await storage.setItem('local:scan', scan);
-}
-
-/**
  * Construct a string formatted key that uniquely identifies the given cookie object.
  * @param {Cookie|CookieData} cookieDat - Stores the cookie data, expects attribute's name, domain and path.
  * @returns {String} - the cookie's key
  */
-function constructKeyFromCookie(cookieDat) {
+export function constructKeyFromCookie(cookieDat) {
   return `${cookieDat.name};${urlToUniformDomain(cookieDat.domain)};${cookieDat.path}`;
 }
 
@@ -151,45 +104,6 @@ async function insertCookieIntoStorage(serializedCookie) {
 }
 
 /**
- * Remove a cookie from the browser and from historyDB
- */
-export async function clearCookies() {
-  // First, we delete the cookies from the browser
-  async function removeCookie(cookie) {
-    let url = 'http' + (cookie.secure ? 's' : '') + '://' + cookie.domain + cookie.path;
-    await browser.cookies.remove({url: url, name: cookie.name});
-  }
-
-  const all_cookies = await browser.cookies.getAll({});
-  let promises = [];
-  for (let i = 0; i < all_cookies.length; i++) {
-    promises.push(removeCookie(all_cookies[i]));
-  }
-
-  const tabs = await browser.tabs.query({active: true});
-  let ret = await browser.scripting.executeScript({
-    target: {tabId: tabs[0].id}, injectImmediately: true, func: (() => {
-      try {
-        window.localStorage.clear();
-        window.sessionStorage.clear();
-        return 'success';
-      } catch (e) {
-        return `${e.name}: ${e.message}`;
-      }
-    }),
-  });
-  if (ret[0].result !== 'success') {
-    throw new Error('Clearing of local/session storage not successful.', {cause: ret[0].result});
-  }
-
-  await Promise.all(promises);
-
-  //await storageMutex.write({"cookies": {}});
-  await storage.setItem('local:cookies', {});
-  //setCookies("local:cookies", {});
-}
-
-/**
  * Retrieve serialized cookie from IndexedDB storage via a transaction.
  * @param {Cookie} cookieDat Raw cookie object that provides name, domain and path.
  * @returns {Promise<CookieData>} Either the cookie if found, or undefined if not.
@@ -226,7 +140,7 @@ async function classifyCookie(newCookie, feature_input) {
  * @param {boolean} storeUpdate Whether
  * @param {boolean} overrideTimeCheck
  */
-async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
+export async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
   // First, if consent is given, check if the cookie has already been stored.
   /** @type {CookieData} */
   let serializedCookie
@@ -270,15 +184,5 @@ async function handleCookie(newCookie, storeUpdate, overrideTimeCheck) {
   const inserted = await insertCookieIntoStorage(serializedCookie);
   if (!inserted) {
     console.error('couldn\'t insert cookie');
-  }
-}
-
-/**
- * Listener that is executed any time a cookie is added, updated or removed.
- * @param {OnChangedChangeInfoType} changeInfo  Contains the cookie itself, and cause info.
- */
-export async function cookieListener(changeInfo) {
-  if (!changeInfo.removed) {
-    await handleCookie(changeInfo.cookie, true, false);
   }
 }

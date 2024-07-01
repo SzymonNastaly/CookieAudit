@@ -57,7 +57,7 @@ export const INTERACTION_STATE = Object.freeze({
   PAGE_W_NOTICE: 0, PAGE_WO_NOTICE: 1,
 });
 
-export const PAGE_COUNT = 1;
+export const PAGE_COUNT = 2;
 export const MAX_OTHER_BTN_COUNT = 2;
 export const COLOR_DIST_THRESHOLD = 5;
 /**

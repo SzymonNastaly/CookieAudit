@@ -1,10 +1,12 @@
 import {env, pipeline} from '@xenova/transformers';
+import {Mutex} from 'async-mutex';
 import {storage} from 'wxt/storage';
-import {clearCookies, cookieListener, storeCookieResults} from './cookieManagement.js';
+import {constructKeyFromCookie, handleCookie} from './cookieManagement.js';
 import {
   awaitNoDOMChanges,
-  DARK_PATTERN_STATUS,
+  DARK_PATTERN_STATUS, delay,
   INTERACTION_STATE,
+  isAALabel,
   MAX_OTHER_BTN_COUNT,
   NOTICE_STATUS,
   openNotification,
@@ -110,6 +112,9 @@ export default defineBackground({
       }
     });
 
+    const mutex = new Mutex();
+    /** @type {Object<string,Mutex>} */
+    const cookieMutexes = {};
     // Handlers for all messages sent to the background script.
     browser.runtime.onMessage.addListener(function(message, _, sendResponse) {
       let {msg} = message;
@@ -139,10 +144,7 @@ export default defineBackground({
             await updateTab(tabs[0].id, urlWoQueryOrFragment(tabs[0].url));
             await resetStorage();
             await clearCookies();
-
-            if (!browser.cookies.onChanged.hasListener(cookieListener)) {
-              browser.cookies.onChanged.addListener(cookieListener);
-            }
+            browser.cookies.onChanged.removeListener(cookieListener);
 
             let scan = await storage.getItem('local:scan');
             scan.stage2 = STAGE2.NOTICE_SELECTION;
@@ -305,6 +307,7 @@ export default defineBackground({
               await storage.setItem('local:interaction', interaction);
               console.log('interaction now: ', interaction);
 
+              await waitStableFrames(tabs[0].id);
               let frameIds = await nonBlankFrameIds(tabs[0].id);
               await browser.scripting.executeScript({
                 target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
@@ -317,64 +320,61 @@ export default defineBackground({
               });
 
               // there should only be one non-null value, which from the frame where the actual notice is
-              const clickRetFrame = clickRet.find(ret => ret != null);
-              if (clickRetFrame != null) {
-                const clickResult = clickRetFrame.result;
-                if (clickResult == null) {
-                  reject(new Error('clickResult of inspectBtnAndSettings was null'));
-                  return;
-                }
-                if (clickResult.status === SECOND_LVL_STATUS.ERROR) {
-                  reject(new Error(clickResult.msg));
-                  return;
-                } else if (clickResult.status === SECOND_LVL_STATUS.SUCCESS) {
-                  await waitStableFrames(tabs[0].id);
-                  let frameIds = await nonBlankFrameIds(tabs[0].id);
-                  await browser.scripting.executeScript({
-                    target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
+              const clickRetFrame = clickRet.find(ret => ret.result != null);
+              if (clickRetFrame == null) {
+                reject(new Error('clickResult of clickSettingsBtn was null'));
+              }
+              const clickResult = clickRetFrame.result;
+              if (clickResult.status === SECOND_LVL_STATUS.ERROR) {
+                reject(new Error(clickResult.msg));
+                return;
+              } else if (clickResult.status === SECOND_LVL_STATUS.SUCCESS) {
+                await waitStableFrames(tabs[0].id);
+                let frameIds = await nonBlankFrameIds(tabs[0].id);
+                await browser.scripting.executeScript({
+                  target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
+                });
+                tabs = await browser.tabs.query({active: true});
+                const urlAfterClick = tabs[0].url;
+                let url1 = new URL(urlBeforeClick);
+                url1.hash = '';
+                let url2 = new URL(urlAfterClick);
+                url2.hash = '';
+                let sndLevelNoticeText, sndLevelIntObjs;
+                if (url1.href !== url2.href) {
+                  ({
+                    sndLevelNoticeText, sndLevelIntObjs,
+                  } = await handleNewNotice(ieClassifier, twoLevelInteractiveElements, iElement, USE_QUANTIZED));
+                } else {
+                  const checkRet = await browser.scripting.executeScript({
+                    target: {tabId: tabs[0].id, allFrames: true},
+                    files: ['checkIfSameNotice.js'],
+                    injectImmediately: true,
                   });
-                  tabs = await browser.tabs.query({active: true});
-                  const urlAfterClick = tabs[0].url;
-                  let url1 = new URL(urlBeforeClick);
-                  url1.hash = '';
-                  let url2 = new URL(urlAfterClick);
-                  url2.hash = '';
-                  let sndLevelNoticeText, sndLevelIntObjs;
-                  if (url1.href !== url2.href) {
+                  if (checkRet == null) {
+                    return reject(new Error('checkRet was null.'));
+                  }
+                  const checkRetFrame = checkRet.find(ret => ret != null);
+                  if (checkRetFrame == null) {
+                    return reject(new Error('checkRet was null.'));
+                  }
+                  const checkResult = checkRetFrame.result;
+                  if (checkResult == null) {
+                    return reject(new Error('checkResult was null'));
+                  }
+                  if (checkResult.status === SECOND_LVL_STATUS.ERROR) {
+                    return reject(new Error(checkResult.msg));
+                  } else if (checkResult.status === SECOND_LVL_STATUS.SAME_NOTICE) {
+                    console.log('determined SAME_NOTICE');
+                    ({
+                      sndLevelNoticeText, sndLevelIntObjs,
+                    } = await processSelectedSettings(tabs, ieClassifier, twoLevelInteractiveElements, iElement,
+                        USE_QUANTIZED, true));
+                  } else if (checkResult.status === SECOND_LVL_STATUS.NEW_NOTICE) {
+                    console.log('determined NEW_NOTICE');
                     ({
                       sndLevelNoticeText, sndLevelIntObjs,
                     } = await handleNewNotice(ieClassifier, twoLevelInteractiveElements, iElement, USE_QUANTIZED));
-                  } else {
-                    const checkRet = await browser.scripting.executeScript({
-                      target: {tabId: tabs[0].id, allFrames: true},
-                      files: ['checkIfSameNotice.js'],
-                      injectImmediately: true,
-                    });
-                    if (checkRet == null) {
-                      return reject(new Error('checkRet was null.'));
-                    }
-                    const checkRetFrame = checkRet.find(ret => ret != null);
-                    if (checkRetFrame == null) {
-                      return reject(new Error('checkRet was null.'));
-                    }
-                    const checkResult = checkRetFrame.result;
-                    if (checkResult == null) {
-                      return reject(new Error('checkResult was null'));
-                    }
-                    if (checkResult.status === SECOND_LVL_STATUS.ERROR) {
-                      return reject(new Error(checkResult.msg));
-                    } else if (checkResult.status === SECOND_LVL_STATUS.SAME_NOTICE) {
-                      console.log('determined SAME_NOTICE');
-                      ({
-                        sndLevelNoticeText, sndLevelIntObjs,
-                      } = await processSelectedSettings(tabs, ieClassifier, twoLevelInteractiveElements, iElement,
-                          USE_QUANTIZED, true));
-                    } else if (checkResult.status === SECOND_LVL_STATUS.NEW_NOTICE) {
-                      console.log('determined NEW_NOTICE');
-                      ({
-                        sndLevelNoticeText, sndLevelIntObjs,
-                      } = await handleNewNotice(ieClassifier, twoLevelInteractiveElements, iElement, USE_QUANTIZED));
-                    }
                   }
                 }
               }
@@ -407,8 +407,11 @@ export default defineBackground({
             let ieToInteractLength = scan.ieToInteract.length;
             scan = null;
 
+            await clearCookies();
             // iterate over interactive elements
             for (let i = 0; i < ieToInteractLength; i++) {
+              browser.cookies.onChanged.addListener(cookieListener);
+
               let interaction = await storage.getItem('local:interaction');
               scan = await storage.getItem('local:scan');
               interaction.ie = scan.ieToInteract[i];
@@ -455,6 +458,7 @@ export default defineBackground({
                     browser.i18n.getMessage('background_ieSuccessText'), 'blue');
 
                 await interactWithPageAndWait(tabs);
+                browser.cookies.onChanged.removeListener(cookieListener);
                 await storeCookieResults(INTERACTION_STATE.PAGE_W_NOTICE);
 
                 interaction = await storage.getItem('local:interaction');
@@ -471,6 +475,7 @@ export default defineBackground({
                 await openNotification(tabs[0].id, browser.i18n.getMessage('background_ieErrorTitle'),
                     browser.i18n.getMessage('background_ieErrorText'), 'red');
 
+                browser.cookies.onChanged.removeListener(cookieListener);
                 // reset cookies and reload page
                 await clearCookies();
                 let scan = await storage.getItem('local:scan');
@@ -572,9 +577,12 @@ export default defineBackground({
             await openNotification(tabs[0].id, browser.i18n.getMessage('background_interactWoBannerTitle'),
                 browser.i18n.getMessage('background_interactWoBannerText'), 'blue');
 
+            await clearCookies();
+            browser.cookies.onChanged.addListener(cookieListener);
+
             // interact with page, while ignoring cookie banner
             await interactWithPageAndWait(tabs);
-
+            browser.cookies.onChanged.removeListener(cookieListener);
             await storeCookieResults(INTERACTION_STATE.PAGE_WO_NOTICE);
 
             frameIds = await nonBlankFrameIds(tabs[0].id);
@@ -1103,6 +1111,7 @@ export default defineBackground({
             target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
           });
         }
+        await delay(3000);
       }
     }
 
@@ -1133,5 +1142,127 @@ export default defineBackground({
       progress.ieDownloading = true;
       await storage.setItem('local:progress', progress);
     }
+
+    async function removeCookie(cookie) {
+      let url = 'http' + (cookie.secure ? 's' : '') + '://' + cookie.domain + cookie.path;
+      await browser.cookies.remove({url: url, name: cookie.name});
+    }
+
+    /**
+     * Remove a cookie from the browser and from historyDB
+     */
+    async function clearCookies() {
+      await mutex.runExclusive(async () => {
+        const all_cookies = await browser.cookies.getAll({});
+        let promises = [];
+        for (let i = 0; i < all_cookies.length; i++) {
+          promises.push(removeCookie(all_cookies[i]));
+        }
+
+        const tabs = await browser.tabs.query({active: true});
+        let ret = await browser.scripting.executeScript({
+          target: {tabId: tabs[0].id}, injectImmediately: true, func: (() => {
+            try {
+              window.localStorage.clear();
+              window.sessionStorage.clear();
+              return 'success';
+            } catch (e) {
+              return `${e.name}: ${e.message}`;
+            }
+          }),
+        });
+        if (ret[0].result !== 'success') {
+          throw new Error('Clearing of local/session storage not successful.', {cause: ret[0].result});
+        }
+
+        await Promise.all(promises);
+
+        //await storageMutex.write({"cookies": {}});
+        await storage.setItem('local:cookies', {});
+        //setCookies("local:cookies", {});
+      });
+    }
+
+    /**
+     * Listener that is executed any time a cookie is added, updated or removed.
+     * @param {OnChangedChangeInfoType} changeInfo  Contains the cookie itself, and cause info.
+     */
+    async function cookieListener(changeInfo) {
+      if (!changeInfo.removed) {
+        let cookie = changeInfo.cookie;
+        let ckey = constructKeyFromCookie(cookie);
+        let cookieMutex;
+        await mutex.runExclusive(async () => {
+          cookieMutex = cookieMutexes[ckey];
+          if (cookieMutex == null) {
+            cookieMutexes[ckey] = new Mutex();
+            cookieMutex = cookieMutexes[ckey];
+          }
+        });
+        await cookieMutex.runExclusive(async () => {
+          await handleCookie(changeInfo.cookie, true, false);
+        });
+      }
+    }
+
+    /**
+     * After an interaction, store the interesting (analytics and advertising) in the scan results.
+     * @param {INTERACTION_STATE} interactionState
+     * @return {Promise<void>}
+     */
+    async function storeCookieResults(interactionState) {
+      /**
+       * @type {CookieCollection}
+       */
+      let cookiesAfterInteraction;
+      let promises = [];
+      for (let cookieMutex of Object.values(cookieMutexes)) {
+        promises.push(cookieMutex.acquire());
+      }
+      await Promise.all(promises);
+
+      cookiesAfterInteraction = await storage.getItem('local:cookies');
+
+      for (let cookieMutex of Object.values(cookieMutexes)) {
+        cookieMutex.release();
+      }
+
+      let aaCookies = [];
+      // if rejection, there should be no AA cookies
+      console.log('cookiesAfterInteraction', cookiesAfterInteraction);
+      for (const cookieKey in cookiesAfterInteraction) {
+        let cookie = cookiesAfterInteraction[cookieKey];
+        if (isAALabel(cookie.current_label)) aaCookies.push(cookie);
+      }
+      let scan = await storage.getItem('local:scan');
+      const interaction = await storage.getItem('local:interaction');
+
+      if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
+        // analyze cookies after interaction with both notice and page
+
+        if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
+          if (aaCookies.length > 0) {
+            const entry = {
+              ie: interaction.ie, aaCookies: aaCookies,
+            };
+            if (interaction.ie.label === Purpose.Reject) {
+              scan.aaCookiesAfterReject.push(entry);
+            } else if (interaction.ie.label === Purpose.SaveSettings) {
+              scan.aaCookiesAfterSave.push(entry);
+            } else if (interaction.ie.label === Purpose.Close) {
+              scan.aaCookiesAfterClose.push(entry);
+            }
+
+          }
+        }
+      } else if (interactionState === INTERACTION_STATE.PAGE_WO_NOTICE) {
+        // analyze cookies after interaction with only page and ignoring notice
+        if (aaCookies.length > 0) { // AA cookies after reject
+          scan.aaCookiesWONoticeInteraction = aaCookies;
+        }
+      }
+      await storage.setItem('local:scan', scan);
+    }
+
   },
 });
