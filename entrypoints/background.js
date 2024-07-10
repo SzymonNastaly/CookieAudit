@@ -768,14 +768,14 @@ export default defineBackground({
       if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
         title = browser.i18n.getMessage('selector_selectNoticeTitle');
         text = browser.i18n.getMessage('selector_selectNoticeText');
-        await openNotification(tabs[0].id, title, text, 'orange');
+        return await openNotification(tabs[0].id, title, text, 'orange');
       } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
         title = browser.i18n.getMessage('selector_selectNewNoticeTitle');
         text = browser.i18n.getMessage('selector_selectNewNoticeText');
         action = browser.i18n.getMessage('selector_startNewNoticeSelectBtn');
         inaction = browser.i18n.getMessage('selector_skipNewNoticeSelectBtn');
 
-        await openNotification(tabs[0].id, title, text, 'orange', {
+        return await openNotification(tabs[0].id, title, text, 'orange', {
           time: 10, action, inaction,
         });
       }

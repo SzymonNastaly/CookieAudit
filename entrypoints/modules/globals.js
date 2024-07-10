@@ -211,7 +211,7 @@ export function waitStableFrames(tabId, t = 750, pollInterval = 100) {
  * @param {string} text
  * @param {string} color
  * @param buttons
- * @return {Promise<void>}
+ * @return {Promise<any>}
  */
 export async function openNotification(tabId, title, text, color, buttons= null) {
   let settings = await storage.getItem('local:settings');
@@ -219,11 +219,11 @@ export async function openNotification(tabId, title, text, color, buttons= null)
     browser.tts.speak(text, {'rate': 1.2});
   }
   if (buttons != null) {
-    await browser.tabs.sendMessage(tabId, {
+    return await browser.tabs.sendMessage(tabId, {
       msg: 'popover', title, text, color, buttons
     });
   } else {
-    await browser.tabs.sendMessage(tabId, {
+    return await browser.tabs.sendMessage(tabId, {
       msg: 'popover', title, text, color,
     });
   }
