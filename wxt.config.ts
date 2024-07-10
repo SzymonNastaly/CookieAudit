@@ -18,7 +18,8 @@ export default defineConfig({
       'storage',
       'unlimitedStorage',
       'scripting',
-      'webNavigation'],
+      'webNavigation',
+      'tts'],
     host_permissions: ['<all_urls>'],
     browser_specific_settings: {
       gecko: {

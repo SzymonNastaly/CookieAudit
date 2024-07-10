@@ -197,6 +197,11 @@ export default defineBackground({
               target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
             });
 
+            await browser.scripting.executeScript({
+              target: {tabId: tabs[0].id}, func: () => {
+                chrome.tts.speak('Scan started!', {'rate': 1.5});
+              }, injectImmediately: true,
+            });
             await openNotification(tabs[0].id, browser.i18n.getMessage('background_downloadingModelsTitle'),
                 browser.i18n.getMessage('background_downloadingModelsText'), 'blue');
             await PurposePipelineSingleton.getInstance(USE_QUANTIZED);
@@ -646,6 +651,9 @@ export default defineBackground({
       } else if (msg === 'cancel_scan') {
         // this is run whenever the user clicks on the Reset button in the popup
         (async () => {
+          // stop speech
+          browser.tts.stop();
+
           if (browser.cookies.onChanged.hasListener(cookieListener)) {
             browser.cookies.onChanged.removeListener(cookieListener);
           }
@@ -760,18 +768,15 @@ export default defineBackground({
       if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
         title = browser.i18n.getMessage('selector_selectNoticeTitle');
         text = browser.i18n.getMessage('selector_selectNoticeText');
-        return await browser.tabs.sendMessage(tabs[0].id, {
-          msg: 'popover', title, text, color: 'orange',
-        });
+        await openNotification(tabs[0].id, title, text, 'orange');
       } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
         title = browser.i18n.getMessage('selector_selectNewNoticeTitle');
         text = browser.i18n.getMessage('selector_selectNewNoticeText');
         action = browser.i18n.getMessage('selector_startNewNoticeSelectBtn');
         inaction = browser.i18n.getMessage('selector_skipNewNoticeSelectBtn');
-        return await browser.tabs.sendMessage(tabs[0].id, {
-          msg: 'popover', title, text, color: 'orange', buttons: {
-            time: 10, action, inaction,
-          },
+
+        await openNotification(tabs[0].id, title, text, 'orange', {
+          time: 10, action, inaction,
         });
       }
     }
