@@ -33,7 +33,7 @@ export default () => {
 
   async function notificationTime(text) {
     let settings = await storage.getItem('local:settings');
-    if (settings.fastMode) {
+    if (settings != null && settings.fastMode) {
       return 100;
     }
     const wpm = 60;

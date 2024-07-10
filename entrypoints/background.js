@@ -1103,6 +1103,7 @@ export default defineBackground({
           target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true,
         });
         let nextUrl = pageRet[0].result;
+        console.log('nextUrl by pageInteractor: ', nextUrl);
         if (nextUrl != null) {
           await updateTab(tabs[0].id, nextUrl);
           await waitStableFrames(tabs[0].id);
@@ -1111,7 +1112,7 @@ export default defineBackground({
             target: {tabId: tabs[0].id, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
           });
         }
-        await delay(3000);
+        await delay(1000);
       }
     }
 

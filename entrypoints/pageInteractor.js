@@ -1,4 +1,4 @@
-import {delay} from './modules/globals.js';
+import {delay, urlWoQueryOrFragment} from './modules/globals.js';
 
 // This function gets the hostname from a URL. ChatGPT
 function getHostName(url) {
@@ -36,14 +36,16 @@ export default defineUnlistedScript(async () => {
   let interaction = await storage.getItem('local:interaction');
 
   for (const link of headerLinks) {
-    if (link.href && !interaction.visitedPages.includes(link.href) && getHostName(link.href) === currentDomain &&
-        !isTrivialLink(currentUrl, link.href)) {
-      interaction.visitedPages.push(link.href);
-      await storage.setItem('local:interaction', interaction);
-      await delay(5000);
-      return link.href; // Stop after navigating to the first suitable link.
+    if (link.href && getHostName(link.href) === currentDomain && !isTrivialLink(currentUrl, link.href)) {
+      const cleanUrl = urlWoQueryOrFragment(link.href);
+      if (!interaction.visitedPages.includes(cleanUrl)) {
+        interaction.visitedPages.push(cleanUrl);
+        await storage.setItem('local:interaction', interaction);
+        await delay(3000);
+        return cleanUrl; // Stop after navigating to the first suitable link.
+      }
     }
   }
   // scripts always need to return explicitly
-
+  return null;
 });
