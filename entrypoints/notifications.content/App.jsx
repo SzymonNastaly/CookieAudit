@@ -31,7 +31,11 @@ export default () => {
     sendResponse({msg: 'ok'});
   }
 
-  function notificationTime(text) {
+  async function notificationTime(text) {
+    let settings = await storage.getItem('local:settings');
+    if (settings.fastMode) {
+      return 100;
+    }
     const wpm = 60;
     const wordLength = 5;
     let words = text.length / wordLength;
@@ -88,7 +92,8 @@ export default () => {
         let el = document.querySelector('#notification-dialog');
         el.showModal();
         el.addEventListener('click', closeEl);
-        await delay(notificationTime(text));
+        let time = await notificationTime(text);
+        await delay(time);
         if (el.open) {
           el.removeEventListener('click', closeEl);
           el.close();
@@ -123,7 +128,8 @@ export default () => {
           if (color === 'red') {
             await delay(30000);
           } else {
-            await delay(notificationTime(text));
+            let time = await notificationTime(text);
+            await delay(time);
           }
           el.hidePopover();
           sendResponse({msg: 'ok'});

@@ -45,5 +45,11 @@ export default defineConfig({
     content_security_policy: {
       extension_pages: 'script-src \'self\' \'wasm-unsafe-eval\'; object-src \'self\';',
     },
+    icons: {
+      "16": "icon/icon16.png",
+      "32": "icon/icon32.png",
+      "64": "icon/icon64.png",
+      "128": "icon/icon128.png"
+    },
   },
 });

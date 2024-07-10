@@ -4,7 +4,14 @@ import './App.css';
 import '@mantine/core/styles.css';
 import {storage} from 'wxt/storage';
 import {
-  classIndexToString, DARK_PATTERN_STATUS, openNotification, Purpose, STAGE2, urlToUniformDomain, urlWoQueryOrFragment,
+  classIndexToString,
+  DARK_PATTERN_STATUS,
+  ieLabelToString,
+  openNotification,
+  Purpose,
+  STAGE2,
+  urlToUniformDomain,
+  urlWoQueryOrFragment,
 } from '../modules/globals.js';
 
 /**
@@ -225,7 +232,11 @@ export default function App() {
           return false;
         }
       })(),
-      colorDistance: scan.colorDistance,
+      colorDistances: scan.colorDistances.map(cd => {
+        cd.button1.textLabel = ieLabelToString(cd.button1.label);
+        cd.button2.textLabel = ieLabelToString(cd.button2.label);
+        return cd;
+      }),
     };
   }
 
