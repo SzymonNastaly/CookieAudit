@@ -23,13 +23,9 @@ function getFootprint(el) {
 }
 
 export default defineUnlistedScript(async () => {
-  /**
-   * @type {Interaction}
-   */
+  /** @type {Interaction} */
   const interaction = await storage.getItem('local:interaction');
-  /**
-   * @type {Selection}
-   */
+  /** @type {Selection} */
   const selection = await storage.getItem('local:selection');
 
   if (selection.iframeFullIndex == null) throw new Error('frameIdx in inspectBtnAndSettings was null.');

@@ -32,7 +32,6 @@ export default defineConfig({
         resources: [
           'ext_data/*',
           'cookieManagement.js',
-          'inspectBtnAndSettings.js',
           'noticeInteractor.js',
           'noticeStillOpen.js',
           'pageInteractor.js',
