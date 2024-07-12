@@ -459,7 +459,8 @@ export default defineBackground({
                 wasSuccess = await noticeInteractAndWait(tabs[0].id);
               }
 
-              if (wasSuccess) {
+              let noticeClosed = await isNoticeClosed(tabs[0].id);
+              if (noticeClosed === true && wasSuccess === true) {
                 await openNotification(tabs[0].id, browser.i18n.getMessage('background_ieSuccessTitle'),
                     browser.i18n.getMessage('background_ieSuccessText'), 'blue');
 
@@ -477,9 +478,9 @@ export default defineBackground({
 
                 await updateTab(tabs[0].id, urlWoQueryOrFragment(scan.url));
                 scan = null;
-              } else if (!wasSuccess) {
+              } else {
                 await openNotification(tabs[0].id, browser.i18n.getMessage('background_ieErrorTitle'),
-                    browser.i18n.getMessage('background_ieErrorText'), 'red');
+                    browser.i18n.getMessage('background_ieErrorText'), 'orange');
 
                 browser.cookies.onChanged.removeListener(cookieListener);
                 // reset cookies and reload page
@@ -543,40 +544,44 @@ export default defineBackground({
               await storage.setItem('local:interaction', interaction);
 
               tabs = await browser.tabs.query({active: true});
-              await noticeInteractAndWait(tabs[0].id);
-
-              // check if nonReachable are now reachable
-              const availableRet = await browser.scripting.executeScript({
-                target: {tabId: tabs[0].id}, func: (nonReachable, DARK_PATTERN_STATUS) => {
-                  for (let sel of nonReachable) {
-                    const el = document.querySelector(sel);
-                    if (el != null) {
-                      const rect = el.getBoundingClientRect();
-                      const midX = (rect.left + rect.right) / 2;
-                      const midY = (rect.top + rect.bottom) / 2;
-                      if (midX < window.innerWidth && midY < window.innerHeight) {
-                        const coordEl = document.elementFromPoint(midX, midY);
-                        if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+              const interactionCompleted = await noticeInteractAndWait(tabs[0].id);
+              const noticeClosed = await isNoticeClosed(tabs[0].id);
+              if (noticeClosed === true && interactionCompleted === true) {
+                // check if nonReachable are now reachable
+                const availableRet = await browser.scripting.executeScript({
+                  target: {tabId: tabs[0].id}, func: (nonReachable, DARK_PATTERN_STATUS) => {
+                    for (let sel of nonReachable) {
+                      const el = document.querySelector(sel);
+                      if (el != null) {
+                        const rect = el.getBoundingClientRect();
+                        const midX = (rect.left + rect.right) / 2;
+                        const midY = (rect.top + rect.bottom) / 2;
+                        if (midX < window.innerWidth && midY < window.innerHeight) {
+                          const coordEl = document.elementFromPoint(midX, midY);
+                          if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+                        }
                       }
                     }
-                  }
 
-                  return {status: DARK_PATTERN_STATUS.NO_FORCED_ACTION};
-                }, injectImmediately: true, args: [nonReachable, DARK_PATTERN_STATUS],
-              });
+                    return {status: DARK_PATTERN_STATUS.NO_FORCED_ACTION};
+                  }, injectImmediately: true, args: [nonReachable, DARK_PATTERN_STATUS],
+                });
 
-              /** @type {number} */
-              const forcedActionStatus = availableRet[0].result.status;
-              scan = await storage.getItem('local:scan');
-              if (forcedActionStatus === DARK_PATTERN_STATUS.HAS_FORCED_ACTION) {
-                scan.forcedActionStatus = DARK_PATTERN_STATUS.HAS_FORCED_ACTION;
+                /** @type {number} */
+                const forcedActionStatus = availableRet[0].result.status;
+                scan = await storage.getItem('local:scan');
+                if (forcedActionStatus === DARK_PATTERN_STATUS.HAS_FORCED_ACTION) {
+                  scan.forcedActionStatus = DARK_PATTERN_STATUS.HAS_FORCED_ACTION;
+                } else {
+                  scan.forcedActionStatus = DARK_PATTERN_STATUS.NO_FORCED_ACTION;
+                }
+                await storage.setItem('local:scan', scan);
               } else {
+                scan = await storage.getItem('local:scan');
                 scan.forcedActionStatus = DARK_PATTERN_STATUS.NO_FORCED_ACTION;
+                await storage.setItem('local:scan', scan);
               }
-              await storage.setItem('local:scan', scan);
-              scan = null;
             } else {
-              console.log('No accept button found, skipping forced interaction check.');
               scan = await storage.getItem('local:scan');
               scan.forcedActionStatus = DARK_PATTERN_STATUS.NO_FORCED_ACTION;
               scan = null;
@@ -1096,25 +1101,25 @@ export default defineBackground({
         wasSuccess = false;
         // get the user to select the different cookie notice
       }
-
-      // TODO: this is currently not working,
-      //  but something similar should be added
-      //  to check if the notice has actually disappeared.
-      /*ret = await browser.scripting.executeScript({
-          target: {tabId: tabId, allFrames: true}, files: ['noticeStillOpen.js'], injectImmediately: true
-      });
-      statusCodes = ret.map(obj => obj.result);
-      if (statusCodes.some(code => code === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
-          let selection = await storage.getItem("local:selection");
-          let secondSelection = await storage.getItem("local:second_selection");
-          console.log(`NOTICE_STILL_OPEN sel: ${JSON.stringify(selection)} secSel: ${JSON.stringify(secondSelection)}`);
-          wasSuccess = false;
-      } else if (statusCodes.some(code => code === NOTICE_STATUS.NOTICE_CLOSED)) {
-          console.log("NOTICE_CLOSED");
-          wasSuccess = true;
-      }*/
-
       return wasSuccess;
+    }
+
+    /**
+     * @param {number} tabId
+     * @returns {Promise<boolean>}
+     */
+    async function isNoticeClosed(tabId) {
+      const openReturn = await browser.scripting.executeScript({
+        target: {tabId: tabId, allFrames: true}, files: ['noticeStillOpen.js'], injectImmediately: true,
+      });
+      const openResults = openReturn.map(obj => obj.result);
+      if (openResults.some(res => res.status === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
+        let selection = await storage.getItem('local:selection');
+        let secondSelection = await storage.getItem('local:second_selection');
+        return false;
+      } else if (openResults.some(res => res.status === NOTICE_STATUS.NOTICE_CLOSED)) {
+        return true;
+      }
     }
 
     async function interactWithPageAndWait(tabs) {
@@ -1123,7 +1128,6 @@ export default defineBackground({
           target: {tabId: tabs[0].id}, files: ['pageInteractor.js'], injectImmediately: true,
         });
         let nextUrl = pageRet[0].result;
-        console.log('nextUrl by pageInteractor: ', nextUrl);
         if (nextUrl != null) {
           await updateTab(tabs[0].id, nextUrl);
           await waitStableFrames(tabs[0].id);

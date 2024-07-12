@@ -176,6 +176,6 @@ export default defineUnlistedScript(async () => {
 
     return 'success';
   } catch (e) {
-    return JSON.stringify(e);
+    return JSON.stringify(e, Object.getOwnPropertyNames(e));
   }
 });

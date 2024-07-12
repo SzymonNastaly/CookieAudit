@@ -19,7 +19,6 @@ export default defineConfig({
       'unlimitedStorage',
       'scripting',
       'webNavigation',
-      '<all_urls>',
       'tts'],
     host_permissions: ['<all_urls>'],
     browser_specific_settings: {

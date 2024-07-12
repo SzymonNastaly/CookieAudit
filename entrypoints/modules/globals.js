@@ -118,8 +118,7 @@ export async function awaitNoDOMChanges(timeout = 2000) {
     });
 
     observer.observe(document.body, {
-      childList: true,
-      subtree: true
+      childList: true, subtree: true,
     });
 
     timer = setTimeout(() => resolvePromise('initial'), timeout);
@@ -213,14 +212,14 @@ export function waitStableFrames(tabId, t = 750, pollInterval = 100) {
  * @param buttons
  * @return {Promise<any>}
  */
-export async function openNotification(tabId, title, text, color, buttons= null) {
+export async function openNotification(tabId, title, text, color, buttons = null) {
   let settings = await storage.getItem('local:settings');
   if (settings != null && settings.enableAudio) {
     browser.tts.speak(text, {'rate': 1.2});
   }
   if (buttons != null) {
     return await browser.tabs.sendMessage(tabId, {
-      msg: 'popover', title, text, color, buttons
+      msg: 'popover', title, text, color, buttons,
     });
   } else {
     return await browser.tabs.sendMessage(tabId, {
@@ -291,7 +290,9 @@ export async function selectionFromSelectedNotice(selected) {
     let boundingClientRect = interactiveElements[i].getBoundingClientRect();
     interactiveObjects.push({
       selector: [
-        getCssSelector(interactiveElements[i], {root: interactiveElements[i].getRootNode(), maxCombinations: 100})],
+        getCssSelector(interactiveElements[i], {
+          root: interactiveElements[i].getRootNode(), maxCombinations: 100, selectors: ['tag', 'nthchild', 'nthoftype'],
+        })],
       text: [
         extract_text_from_element(interactiveElements[i]).
             join(' ')],
