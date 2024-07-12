@@ -95,6 +95,7 @@ export async function awaitNoDOMChanges(timeout = 2000) {
   return new Promise((resolve) => {
     let timer;
     let observer;
+    let forceResolveTimer;
 
     const cleanup = () => {
       if (observer) {
@@ -104,6 +105,10 @@ export async function awaitNoDOMChanges(timeout = 2000) {
       if (timer) {
         clearTimeout(timer);
         timer = null;
+      }
+      if (forceResolveTimer) {
+        clearTimeout(forceResolveTimer);
+        forceResolveTimer = null;
       }
     };
 
@@ -118,10 +123,14 @@ export async function awaitNoDOMChanges(timeout = 2000) {
     });
 
     observer.observe(document.body, {
-      childList: true, subtree: true,
+      childList: true,
+      subtree: true,
     });
 
     timer = setTimeout(() => resolvePromise('initial'), timeout);
+
+    // Force resolve after 10 seconds
+    forceResolveTimer = setTimeout(() => resolvePromise('force'), 10000);
   });
 }
 

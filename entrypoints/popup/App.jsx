@@ -14,6 +14,17 @@ import {
   urlWoQueryOrFragment,
 } from '../modules/globals.js';
 
+function createJsonDataUrl(jsonObject) {
+  const jsonString = JSON.stringify(jsonObject, null, 2);
+
+  const utf8Encoder = new TextEncoder();
+  const utf8Encoded = utf8Encoder.encode(jsonString);
+
+  const base64Encoded = window.btoa(String.fromCharCode.apply(null, utf8Encoded));
+
+  return `data:application/json;charset=utf-8;base64,${base64Encoded}`;
+}
+
 /**
  * Retrieve a clean (without query parameters or a #fragement) url of the active tab.
  * @returns {Promise<String|null>} Url.
@@ -312,7 +323,7 @@ export default function App() {
       let today = new Date();
       let uniformDomain = urlToUniformDomain(scan.url);
       let jsonReport = createJsonReport(scan);
-      let jsonDataUrl = 'data:application/json;base64,' + window.btoa(JSON.stringify(jsonReport, null, 2));
+      let jsonDataUrl = createJsonDataUrl(jsonReport);
       let dateString = new Intl.DateTimeFormat('en-CA', {
         year: 'numeric', month: '2-digit', day: '2-digit',
       }).format(today);
