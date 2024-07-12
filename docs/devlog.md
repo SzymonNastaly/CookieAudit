@@ -1,5 +1,31 @@
 # Devlog
 
+## July 11, 2025
+
+### Capturing Images of Elements for Color Distance
+
+* first issue: images of an HTML anchor tag with a `::before` (SVG file) were not correctly exported to an image
+* solution: take a screenshot with tabs.captureVisibleTab() and then crop it
+* the cropping function takes the dataUrl, makes an Image() out of it, draws that needed portion of the image to a canvas and
+  returns the dataUrl of the canvas
+    * ```mermaid
+      sequenceDiagram
+      participant F as Function
+      participant I as Image Object
+      participant C as Canvas
+    
+          F->>I: Create Image object
+          F->>I: Set src to dataUrl
+          F-->>I: Define onload callback
+          I->>I: Start loading image (async)
+          F->>F: Function continues...
+          I->>I: Image fully loaded
+          I->>C: onload callback draws to canvas
+          C->>F: Resolve promise with canvas data
+      ```
+
+## June 25,2024
+
 ### On tabs.onUpdated
 
 * as of 2016, Firefox was often skipping the 'loading

@@ -1,6 +1,5 @@
 import Color from 'colorjs.io';
 import {FastAverageColor} from 'fast-average-color';
-import {toPng} from 'html-to-image';
 import {MAX_OTHER_BTN_COUNT, Purpose} from './modules/globals.js';
 
 /**
@@ -23,18 +22,59 @@ function getElementFromIE(ie) {
 }
 
 /**
+ *
+ * @param {string} dataUrl
+ * @param {DOMRect} rect
+ * @param {number} devicePixelRatio
+ * @returns {Promise<string>}
+ * @mermaid
+
+ */
+function cropImage(dataUrl, rect, devicePixelRatio) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = rect.width * devicePixelRatio;
+      canvas.height = rect.height * devicePixelRatio;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(
+          img,
+          (rect.x + window.scrollX) * devicePixelRatio,
+          (rect.y + window.scrollY) * devicePixelRatio,
+          rect.width * devicePixelRatio,
+          rect.height * devicePixelRatio,
+          0,
+          0,
+          rect.width * devicePixelRatio,
+          rect.height * devicePixelRatio,
+      );
+      resolve(canvas.toDataURL());
+    };
+    img.src = dataUrl;
+  });
+}
+
+/**
  * @param {HTMLElement} el1
  * @param {HTMLElement} el2
  * @returns {Promise<number>}
  */
 async function calculateColorDistance(el1, el2) {
   /** @type {string} */
-  const dataUrl1 = await toPng(el1);
-  /** @type {string} */
-  const dataUrl2 = await toPng(el2);
+  const screenshot = await storage.getItem('local:screenshot');
+
+  const devicePixelRatio = window.devicePixelRatio || 1;
+
+  const el1Rect = el1.getBoundingClientRect();
+  const el1DataUrl = await cropImage(screenshot, el1Rect, devicePixelRatio);
+
+  const el2Rect = el2.getBoundingClientRect();
+  const el2DataUrl = await cropImage(screenshot, el2Rect, devicePixelRatio);
+
   const fac = new FastAverageColor();
-  const result1 = await fac.getColorAsync(dataUrl1, {mode: 'precision', algorithm: 'dominant'});
-  const result2 = await fac.getColorAsync(dataUrl2, {mode: 'precision', algorithm: 'dominant'});
+  const result1 = await fac.getColorAsync(el1DataUrl, {mode: 'precision', algorithm: 'dominant'});
+  const result2 = await fac.getColorAsync(el2DataUrl, {mode: 'precision', algorithm: 'dominant'});
   let color1 = new Color(result1.hex);
   let color2 = new Color(result2.hex);
   return color1.deltaEITP(color2);
@@ -170,6 +210,6 @@ export default defineUnlistedScript(async () => {
     }
     return {status: 'ok', colorDistances};
   } catch (error) {
-    return {status: 'error', error: JSON.stringify(error)};
+    return {status: 'error', error: JSON.stringify(error, Object.getOwnPropertyNames(error))};
   }
 });

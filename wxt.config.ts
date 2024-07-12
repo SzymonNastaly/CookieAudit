@@ -9,7 +9,7 @@ export default defineConfig({
   manifest: {
     name: 'Cookie Audit',
     description: 'Investigate cookie compliance on websites.',
-    version: '2024.7.10',
+    version: '2024.7.12',
     default_locale: 'en',
     permissions: [
       'cookies',
@@ -19,6 +19,7 @@ export default defineConfig({
       'unlimitedStorage',
       'scripting',
       'webNavigation',
+      '<all_urls>',
       'tts'],
     host_permissions: ['<all_urls>'],
     browser_specific_settings: {
@@ -47,10 +48,10 @@ export default defineConfig({
       extension_pages: 'script-src \'self\' \'wasm-unsafe-eval\'; object-src \'self\';',
     },
     icons: {
-      "16": "icon/icon16.png",
-      "32": "icon/icon32.png",
-      "64": "icon/icon64.png",
-      "128": "icon/icon128.png"
+      '16': 'icon/icon16.png',
+      '32': 'icon/icon32.png',
+      '64': 'icon/icon64.png',
+      '128': 'icon/icon128.png',
     },
   },
 });

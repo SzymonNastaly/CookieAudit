@@ -4,7 +4,8 @@ import {storage} from 'wxt/storage';
 import {constructKeyFromCookie, handleCookie} from './cookieManagement.js';
 import {
   awaitNoDOMChanges,
-  DARK_PATTERN_STATUS, delay,
+  DARK_PATTERN_STATUS,
+  delay,
   INTERACTION_STATE,
   isAALabel,
   MAX_OTHER_BTN_COUNT,
@@ -499,12 +500,17 @@ export default defineBackground({
             await openNotification(tabs[0].id, browser.i18n.getMessage('background_darkPatternDetectionTitle'),
                 browser.i18n.getMessage('background_darkPatternDetectionText'), 'blue');
 
+            let screenshotDataUrl = await browser.tabs.captureVisibleTab(tabs[0].windowId);
+            await storage.setItem('local:screenshot', screenshotDataUrl);
+
             // check for interfaceInterference
             const interferenceRet = await browser.scripting.executeScript({
               target: {tabId: tabs[0].id, allFrames: true},
               files: ['checkInterfaceInterference.js'],
               injectImmediately: true,
             });
+
+            await storage.setItem('local:screenshot', '');
 
             const interferenceRes = interferenceRet.map(obj => obj.result);
             for (let res of interferenceRes) {
@@ -519,51 +525,60 @@ export default defineBackground({
               }
             }
 
-            // check for forced action - dark pattern
-            const forcedActionRet = await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id}, files: ['checkForcedAction.js'], injectImmediately: true,
-            });
+            if (interactiveElements[Purpose.Accept].length > 0) {
+              // check for forced action - dark pattern
+              const forcedActionRet = await browser.scripting.executeScript({
+                target: {tabId: tabs[0].id}, files: ['checkForcedAction.js'], injectImmediately: true,
+              });
 
-            /**  @type {string[]} */
-            let nonReachable = forcedActionRet[0].result.nonReachable;
+              /**  @type {string[]} */
+              let nonReachable = forcedActionRet[0].result.nonReachable;
 
-            // click the accept button and wait
-            /**
-             * @type {Interaction}
-             */
-            let interaction = await storage.getItem('local:interaction');
-            interaction.ie = interactiveElements[Purpose.Accept][0];
-            await storage.setItem('local:interaction', interaction);
+              // click the accept button and wait
+              /**
+               * @type {Interaction}
+               */
+              let interaction = await storage.getItem('local:interaction');
+              interaction.ie = interactiveElements[Purpose.Accept][0];
+              await storage.setItem('local:interaction', interaction);
 
-            tabs = await browser.tabs.query({active: true});
-            await noticeInteractAndWait(tabs[0].id);
+              tabs = await browser.tabs.query({active: true});
+              await noticeInteractAndWait(tabs[0].id);
 
-            // check if nonReachable are now reachable
-            const availableRet = await browser.scripting.executeScript({
-              target: {tabId: tabs[0].id}, func: (nonReachable, DARK_PATTERN_STATUS) => {
-                for (let sel of nonReachable) {
-                  const el = document.querySelector(sel);
-                  if (el != null) {
-                    const rect = el.getBoundingClientRect();
-                    const midX = (rect.left + rect.right) / 2;
-                    const midY = (rect.top + rect.bottom) / 2;
-                    if (midX < window.innerWidth && midY < window.innerHeight) {
-                      const coordEl = document.elementFromPoint(midX, midY);
-                      if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+              // check if nonReachable are now reachable
+              const availableRet = await browser.scripting.executeScript({
+                target: {tabId: tabs[0].id}, func: (nonReachable, DARK_PATTERN_STATUS) => {
+                  for (let sel of nonReachable) {
+                    const el = document.querySelector(sel);
+                    if (el != null) {
+                      const rect = el.getBoundingClientRect();
+                      const midX = (rect.left + rect.right) / 2;
+                      const midY = (rect.top + rect.bottom) / 2;
+                      if (midX < window.innerWidth && midY < window.innerHeight) {
+                        const coordEl = document.elementFromPoint(midX, midY);
+                        if (el.contains(coordEl)) return {status: DARK_PATTERN_STATUS.HAS_FORCED_ACTION};
+                      }
                     }
                   }
-                }
 
-                return {status: DARK_PATTERN_STATUS.NO_FORCED_ACTION};
-              }, injectImmediately: true, args: [nonReachable, DARK_PATTERN_STATUS],
-            });
+                  return {status: DARK_PATTERN_STATUS.NO_FORCED_ACTION};
+                }, injectImmediately: true, args: [nonReachable, DARK_PATTERN_STATUS],
+              });
 
-            /** @type {number} */
-            const forcedActionStatus = availableRet[0].result.status;
-            if (forcedActionStatus === DARK_PATTERN_STATUS.HAS_FORCED_ACTION) {
+              /** @type {number} */
+              const forcedActionStatus = availableRet[0].result.status;
               scan = await storage.getItem('local:scan');
-              scan.forcedActionStatus = forcedActionStatus;
+              if (forcedActionStatus === DARK_PATTERN_STATUS.HAS_FORCED_ACTION) {
+                scan.forcedActionStatus = DARK_PATTERN_STATUS.HAS_FORCED_ACTION;
+              } else {
+                scan.forcedActionStatus = DARK_PATTERN_STATUS.NO_FORCED_ACTION;
+              }
               await storage.setItem('local:scan', scan);
+              scan = null;
+            } else {
+              console.log('No accept button found, skipping forced interaction check.');
+              scan = await storage.getItem('local:scan');
+              scan.forcedActionStatus = DARK_PATTERN_STATUS.NO_FORCED_ACTION;
               scan = null;
             }
 
