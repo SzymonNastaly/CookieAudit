@@ -30,9 +30,11 @@ export default defineUnlistedScript(async () => {
       interactiveObjects.push({
         selector: [
           getCssSelector(sndLevelClickable[i], {
-            root: sndLevelClickable[i].getRootNode(),
-            maxCombinations: 100,
-            selectors: ['tag', 'nthchild', 'nthoftype'],
+            root: sndLevelClickable[i].getRootNode(), maxCombinations: 100,
+          })],
+        relativeSelector: [
+          getCssSelector(sndLevelClickable[i], {
+            root: sndLevelClickable[i].getRootNode(), maxCombinations: 100, selectors: ['tag', 'nthchild', 'nthoftype'],
           })],
         text: [extract_text_from_element(sndLevelClickable[i]).join(' ')],
         label: null,

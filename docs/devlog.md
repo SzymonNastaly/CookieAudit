@@ -1,5 +1,13 @@
 # Devlog
 
+## July 13, 2025
+* removing the root option for getCssSelector, maybe this fixes the issues on forum-bmw.fr
+  * need to test it then for websites with iframe/shadow root notices
+
+## July 12, 2025
+* TODO: Add information about skipping of interface interference check because of missing Accept button
+  * idea, maybe we could alternatively also use a close or rejct button?
+
 ## July 11, 2025
 
 ### Capturing Images of Elements for Color Distance

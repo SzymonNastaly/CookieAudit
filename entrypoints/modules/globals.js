@@ -83,11 +83,16 @@ export const INITIAL_PROGRESS = Object.freeze({
   purpose: 0, purposeDownloading: false, ie: 0, ieDownloading: false,
 });
 export const NOTICE_STATUS = Object.freeze({
-  WRONG_FRAME: 0, SUCCESS: 1, NOTICE_STILL_OPEN: 2, WRONG_SELECTOR: 3, NOTICE_CLOSED: 4,
+  WRONG_FRAME: 'wrong_frame', SUCCESS: 'success', NOTICE_STILL_OPEN: 'notice_still_open', WRONG_SELECTOR: 'wrong_selector', NOTICE_CLOSED: 'notice_closed', ERROR: 'error'
 });
 
 export const SECOND_LVL_STATUS = Object.freeze({
   EXTERNAL_ANCHOR: 0, SUCCESS: 1, NEW_NOTICE: 2, SAME_NOTICE: 3, NOT_FOUND: 4, ERROR: 5,
+});
+
+/** @type {Readonly<{SUCCESS: string, ERROR: string}>} */
+export const CLICK_BTN_STATUS = Object.freeze({
+  SUCCESS: 'success', ERROR: 'error', WRONG_SELECTOR: 'wrong_selector',
 });
 
 // Function to await no changes being made to the DOM. ChatGPT
@@ -123,8 +128,7 @@ export async function awaitNoDOMChanges(timeout = 2000) {
     });
 
     observer.observe(document.body, {
-      childList: true,
-      subtree: true,
+      childList: true, subtree: true,
     });
 
     timer = setTimeout(() => resolvePromise('initial'), timeout);
@@ -289,7 +293,10 @@ export async function selectionFromSelectedNotice(selected) {
   let noticeText = extract_text_from_element(selected, false).
       join('\n').
       replace(/\s+/g, ' ');
-  const interactiveElements = get_clickable_elements(selected);
+  let interactiveElements = get_clickable_elements(selected);
+  if (interactiveElements.length > 30) {
+    interactiveElements = [...interactiveElements.slice(0, 15), ...interactiveElements.slice(-15)];
+  }
   /**
    * @type {InteractiveObject[]}
    */
@@ -299,6 +306,10 @@ export async function selectionFromSelectedNotice(selected) {
     let boundingClientRect = interactiveElements[i].getBoundingClientRect();
     interactiveObjects.push({
       selector: [
+        getCssSelector(interactiveElements[i], {
+          root: interactiveElements[i].getRootNode(), maxCombinations: 100,
+        })],
+      relativeSelector: [
         getCssSelector(interactiveElements[i], {
           root: interactiveElements[i].getRootNode(), maxCombinations: 100, selectors: ['tag', 'nthchild', 'nthoftype'],
         })],

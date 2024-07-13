@@ -4,6 +4,7 @@ import {storage} from 'wxt/storage';
 import {constructKeyFromCookie, handleCookie} from './cookieManagement.js';
 import {
   awaitNoDOMChanges,
+  CLICK_BTN_STATUS,
   DARK_PATTERN_STATUS,
   delay,
   INTERACTION_STATE,
@@ -331,10 +332,10 @@ export default defineBackground({
                 reject(new Error('clickResult of clickSettingsBtn was null'));
               }
               const clickResult = clickRetFrame.result;
-              if (clickResult.status === SECOND_LVL_STATUS.ERROR) {
-                reject(new Error(clickResult.msg));
+              if (clickResult.status === CLICK_BTN_STATUS.ERROR) {
+                reject(new Error(clickResult.data));
                 return;
-              } else if (clickResult.status === SECOND_LVL_STATUS.SUCCESS) {
+              } else if (clickResult.status === CLICK_BTN_STATUS.SUCCESS) {
                 await waitStableFrames(tabs[0].id);
                 let frameIds = await nonBlankFrameIds(tabs[0].id);
                 await browser.scripting.executeScript({
@@ -452,6 +453,7 @@ export default defineBackground({
 
               if (interaction.ie.selector.length === 2 && wasSuccess) {
                 interaction.ie.selector.shift();
+                interaction.ie.relativeSelector.shift();
                 interaction.ie.x.shift();
                 interaction.ie.y.shift();
                 await storage.setItem('local:interaction', interaction);
@@ -951,9 +953,7 @@ export default defineBackground({
      */
     async function processSelectedSettings(tabs, ieClassifier, twoLevelInteractiveElements, iElement, useQuantized,
         sameNotice) {
-      /**
-       * @type {Selection[]}
-       */
+      /** @type {Selection[]} */
       const secondSelections = await storage.getItem('local:second_selections');
       let result = {text: null, interactiveObjects: null};
       if (sameNotice) {
@@ -1024,6 +1024,8 @@ export default defineBackground({
         sndLevelIntObjs[i].text = [iElement.text[0], sndLevelIntObjs[i].text[0]];
         sndLevelIntObjs[i].selector = [
           iElement.selector[0], sndLevelIntObjs[i].selector[0]];
+        sndLevelIntObjs[i].relativeSelector = [
+          iElement.relativeSelector[0], sndLevelIntObjs[i].relativeSelector[0]];
         sndLevelIntObjs[i].x = [iElement.x[0], sndLevelIntObjs[i].x[0]];
         sndLevelIntObjs[i].y = [iElement.y[0], sndLevelIntObjs[i].y[0]];
         sndLevelIntObjs[i].label = labels[i];
@@ -1039,7 +1041,7 @@ export default defineBackground({
      * @return {Promise<boolean>} - True, if the button click happened without problems.
      */
     async function noticeInteractAndWait(tabId) {
-      let statusCodes, wasSuccess;
+      let statusCodes;
       let ret = await browser.scripting.executeScript({
         target: {tabId: tabId, allFrames: true}, files: ['noticeInteractor.js'], injectImmediately: true,
       });
@@ -1095,13 +1097,7 @@ export default defineBackground({
         target: {tabId: tabId, frameIds}, func: awaitNoDOMChanges, injectImmediately: true,
       });
 
-      if (statusCodes.some(code => code === NOTICE_STATUS.SUCCESS)) {
-        wasSuccess = true;
-      } else if (statusCodes.some(code => code === NOTICE_STATUS.WRONG_SELECTOR)) {
-        wasSuccess = false;
-        // get the user to select the different cookie notice
-      }
-      return wasSuccess;
+      return statusCodes.some(code => code === NOTICE_STATUS.SUCCESS);
     }
 
     /**
@@ -1113,13 +1109,14 @@ export default defineBackground({
         target: {tabId: tabId, allFrames: true}, files: ['noticeStillOpen.js'], injectImmediately: true,
       });
       const openResults = openReturn.map(obj => obj.result);
-      if (openResults.some(res => res.status === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
+      if (openResults.some(res => res?.status === NOTICE_STATUS.NOTICE_STILL_OPEN)) {
         let selection = await storage.getItem('local:selection');
         let secondSelection = await storage.getItem('local:second_selection');
         return false;
-      } else if (openResults.some(res => res.status === NOTICE_STATUS.NOTICE_CLOSED)) {
-        return true;
       }
+      const errors = openResults.filter(res => res?.status === NOTICE_STATUS.ERROR);
+      console.error(`Errors in isNoticeClosed: ${JSON.stringify(errors)}`);
+      return true;
     }
 
     async function interactWithPageAndWait(tabs) {

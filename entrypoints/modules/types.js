@@ -2,6 +2,7 @@
  * Represents a single interactive object with multiple properties.
  * @typedef {Object} InteractiveObject
  * @property {string[]} selector - One selector for the interactive object, or two in case of a nested interactive object.
+ * @property {string[]} relativeSelector - One (relative = no id or classes) selector for the interactive object, or two in case of a nested interactive object.
  * @property {string[]} text - One text for the interactive object, or two in case of a nested interactive object.
  * @property {string} tagName - The tag name of the HTML element.
  * @property {number[]} x - x-coordinates of the first (and second, if nested) element on the page.
