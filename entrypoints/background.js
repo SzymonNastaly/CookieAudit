@@ -98,17 +98,19 @@ export default defineBackground({
       if (scan == null) {
         await resetStorage();
         await storage.setItem('local:stoppingScan', false);
-      } else if (URL.canParse(scan.url) && URL.canParse(changeInfo.url)) {
-        let scanUrl = (new URL(scan.url)).hostname;
-        let changeUrl = (new URL(changeInfo.url)).hostname;
-        if (scanUrl !== changeUrl) {
-          // user has gone to some different url, resetting scan
-          if (await scanIsRunning() && (await storage.getItem('local:stoppingScan')) === false) {
-            await storage.setItem('local:stoppingScan', true);
-          } else {
-            // when scan ist already FINISHED
-            await resetStorage();
-            await clearCookies();
+      } else if (scan.stage2 !== STAGE2.PAGE_INTERACTION) {
+        if (URL.canParse(scan.url) && URL.canParse(changeInfo.url)) {
+          let scanUrl = (new URL(scan.url)).hostname;
+          let changeUrl = (new URL(changeInfo.url)).hostname;
+          if (scanUrl !== changeUrl) {
+            // user has gone to some different url, resetting scan
+            if (await scanIsRunning() && (await storage.getItem('local:stoppingScan')) === false) {
+              await storage.setItem('local:stoppingScan', true);
+            } else {
+              // when scan ist already FINISHED
+              await resetStorage();
+              await clearCookies();
+            }
           }
         }
       }
@@ -1007,30 +1009,32 @@ export default defineBackground({
       }
 
       // run analysis on sndLevelIntObjs
-      let sndLevelTranslatedTexts = await Promise.all(sndLevelIntObjs.map(async obj => {
-        let text;
-        if (obj.text.length === 1) {
-          text = obj.text[0];
-        } else {
-          throw new Error(`sndLevelIntObj has length ${obj.text.length}`);
-        }
-        let res = await translateToEnglish(text);
-        return res.resultText;
-      }));
-      const labels = (await ieClassifier(sndLevelTranslatedTexts)).map(res => {
-        return getIELabel(res);
-      });
-      for (let i = 0; i < labels.length; i++) {
-        sndLevelIntObjs[i].text = [iElement.text[0], sndLevelIntObjs[i].text[0]];
-        sndLevelIntObjs[i].selector = [
-          iElement.selector[0], sndLevelIntObjs[i].selector[0]];
-        sndLevelIntObjs[i].relativeSelector = [
-          iElement.relativeSelector[0], sndLevelIntObjs[i].relativeSelector[0]];
-        sndLevelIntObjs[i].x = [iElement.x[0], sndLevelIntObjs[i].x[0]];
-        sndLevelIntObjs[i].y = [iElement.y[0], sndLevelIntObjs[i].y[0]];
-        sndLevelIntObjs[i].label = labels[i];
+      if (sndLevelIntObjs.length > 0) {
+        let sndLevelTranslatedTexts = await Promise.all(sndLevelIntObjs.map(async obj => {
+          let text;
+          if (obj.text.length === 1) {
+            text = obj.text[0];
+          } else {
+            throw new Error(`sndLevelIntObj has length ${obj.text.length}`);
+          }
+          let res = await translateToEnglish(text);
+          return res.resultText;
+        }));
+        const labels = (await ieClassifier(sndLevelTranslatedTexts)).map(res => {
+          return getIELabel(res);
+        });
+        for (let i = 0; i < labels.length; i++) {
+          sndLevelIntObjs[i].text = [iElement.text[0], sndLevelIntObjs[i].text[0]];
+          sndLevelIntObjs[i].selector = [
+            iElement.selector[0], sndLevelIntObjs[i].selector[0]];
+          sndLevelIntObjs[i].relativeSelector = [
+            iElement.relativeSelector[0], sndLevelIntObjs[i].relativeSelector[0]];
+          sndLevelIntObjs[i].x = [iElement.x[0], sndLevelIntObjs[i].x[0]];
+          sndLevelIntObjs[i].y = [iElement.y[0], sndLevelIntObjs[i].y[0]];
+          sndLevelIntObjs[i].label = labels[i];
 
-        twoLevelInteractiveElements[labels[i]].push(sndLevelIntObjs[i]);
+          twoLevelInteractiveElements[labels[i]].push(sndLevelIntObjs[i]);
+        }
       }
       return {sndLevelNoticeText, sndLevelIntObjs};
     }
@@ -1115,7 +1119,9 @@ export default defineBackground({
         return false;
       }
       const errors = openResults.filter(res => res?.status === NOTICE_STATUS.ERROR);
-      console.error(`Errors in isNoticeClosed: ${JSON.stringify(errors)}`);
+      if (errors.length > 0) {
+        console.error(`Errors in isNoticeClosed: ${JSON.stringify(errors)}`);
+      }
       return true;
     }
 
