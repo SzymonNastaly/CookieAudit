@@ -328,16 +328,9 @@ export default defineBackground({
                 target: {tabId: tabs[0].id, allFrames: true}, files: ['clickSettingsBtn.js'], injectImmediately: true,
               });
 
-              // there should only be one non-null value, which from the frame where the actual notice is
-              const clickRetFrame = clickRet.find(ret => ret.result != null);
-              if (clickRetFrame == null) {
-                reject(new Error('clickResult of clickSettingsBtn was null'));
-              }
-              const clickResult = clickRetFrame.result;
-              if (clickResult.status === CLICK_BTN_STATUS.ERROR) {
-                reject(new Error(clickResult.data));
-                return;
-              } else if (clickResult.status === CLICK_BTN_STATUS.SUCCESS) {
+              const clickResults = clickRet.map(obj => obj.result);
+
+              if (clickResults.some(res => res?.status === CLICK_BTN_STATUS.SUCCESS)) {
                 await waitStableFrames(tabs[0].id);
                 let frameIds = await nonBlankFrameIds(tabs[0].id);
                 await browser.scripting.executeScript({
@@ -386,6 +379,11 @@ export default defineBackground({
                     } = await handleNewNotice(ieClassifier, twoLevelInteractiveElements, iElement, USE_QUANTIZED));
                   }
                 }
+              } else if (clickResults.some(res => res?.status === CLICK_BTN_STATUS.ERROR)) {
+                reject(new Error(clickResults.find(res => res?.status === CLICK_BTN_STATUS.ERROR).data));
+                return;
+              } else {
+                reject(new Error('no clickResult was success or result'));
               }
 
               // reset cookies and reload page
