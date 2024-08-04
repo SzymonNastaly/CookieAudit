@@ -8,6 +8,9 @@ function isCovered(el) {
   const middleY = (rect.top + rect.bottom) / 2;
 
   const topEl = document.elementFromPoint(middleX, middleY);
+  /**
+   * TODO: This probably doesn't handle shadow DOMs properly
+   */
 
   return !el.contains(topEl);
 }

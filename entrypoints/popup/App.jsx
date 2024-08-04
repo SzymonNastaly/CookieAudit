@@ -8,8 +8,8 @@ import {
   DARK_PATTERN_STATUS,
   ieLabelToString,
   openNotification,
-  Purpose,
-  STAGE2,
+  IEPurpose,
+  STAGE,
   urlToUniformDomain,
   urlWoQueryOrFragment,
 } from '../modules/globals.js';
@@ -145,10 +145,10 @@ export default function App() {
   }, []);
 
   function isStage(scanState, stage) {
-    if (stage === STAGE2.NOT_STARTED) {
-      return scanState == null || scanState['stage2'] === stage;
+    if (stage === STAGE.NOT_STARTED) {
+      return scanState == null || scanState.stage === stage;
     } else {
-      return scanState && scanState['stage2'] === stage;
+      return scanState && scanState.stage === stage;
     }
   }
 
@@ -198,18 +198,18 @@ export default function App() {
       url: scan.url,
       startTime: scan.scanStart,
       interactiveElements: {
-        accept: scan.interactiveElements[Purpose.Accept],
-        close: scan.interactiveElements[Purpose.Close],
-        settings: scan.interactiveElements[Purpose.Settings],
-        other: scan.interactiveElements[Purpose.Other],
-        reject: scan.interactiveElements[Purpose.Reject],
-        saveSettings: scan.interactiveElements[Purpose.SaveSettings],
+        accept: scan.interactiveElements[IEPurpose.Accept],
+        close: scan.interactiveElements[IEPurpose.Close],
+        settings: scan.interactiveElements[IEPurpose.Settings],
+        other: scan.interactiveElements[IEPurpose.Other],
+        reject: scan.interactiveElements[IEPurpose.Reject],
+        saveSettings: scan.interactiveElements[IEPurpose.SaveSettings],
       },
       purposeDeclared: scan.purposeDeclared,
       noticeDetected: scan.noticeDetected,
       rejectDetected: scan.rejectDetected,
       closeSaveDetected: scan.closeSaveDetected,
-      aaCookiesAfterReject: scan['aaCookiesAfterReject'].map(entry => {
+      aaCookiesAfterReject: scan.aaCookiesAfterReject.map(entry => {
         entry.aaCookies = entry.aaCookies.map(cookie => {
           cookie.textLabel = classIndexToString(cookie.current_label);
           return cookie;
@@ -269,7 +269,7 @@ export default function App() {
     } else if (isLoading) {
       return (<Text>{browser.i18n.getMessage('popup_waitForLoad')}</Text>);
     } else if (scan != null) {
-      if (isStage(scan, STAGE2.NOT_STARTED)) {
+      if (isStage(scan, STAGE.NOT_STARTED)) {
         if (!resetBeforeScan) {
           return (<Text>{browser.i18n.getMessage('popup_pleaseResetScan')}</Text>);
         } else if (illegalUrl) {
@@ -277,20 +277,20 @@ export default function App() {
         } else {
           return (<Text>{browser.i18n.getMessage('popup_initialInstruction')}</Text>);
         }
-      } else if (isStage(scan, STAGE2.NOTICE_SELECTION)) {
+      } else if (isStage(scan, STAGE.NOTICE_SELECTION)) {
         return (<Text>{browser.i18n.getMessage('popup_skipSelection')}</Text>);
-      } else if (isStage(scan, STAGE2.SECOND_SELECTION)) {
+      } else if (isStage(scan, STAGE.SECOND_SELECTION)) {
         return (<Text>{browser.i18n.getMessage('popup_secondSelection')}</Text>);
-      } else if (isStage(scan, STAGE2.NOTICE_ANALYSIS)) {
+      } else if (isStage(scan, STAGE.NOTICE_ANALYSIS)) {
         if (modelsAreDownloading) {
           return (<Text>{browser.i18n.getMessage('popup_waitForModels')}</Text>);
         }
         return (<Text>{browser.i18n.getMessage('popup_waitForAnalysis')}</Text>);
-      } else if (isStage(scan, STAGE2.NOTICE_INTERACTION)) {
+      } else if (isStage(scan, STAGE.NOTICE_INTERACTION)) {
         return (<Text>{browser.i18n.getMessage('popup_noticeInteraction')}</Text>);
-      } else if (isStage(scan, STAGE2.PAGE_INTERACTION)) {
+      } else if (isStage(scan, STAGE.PAGE_INTERACTION)) {
         return (<Text>{browser.i18n.getMessage('popup_pageInteraction')}</Text>);
-      } else if (isStage(scan, STAGE2.FINISHED)) {
+      } else if (isStage(scan, STAGE.FINISHED)) {
         return (<Text>{browser.i18n.getMessage('popup_finishedScan')}</Text>);
       }
     } else if (!resetBeforeScan) {
@@ -311,14 +311,14 @@ export default function App() {
     if (scan == null) {
       return (<></>);
     }
-    if (isStage(scan, STAGE2.NOT_STARTED)) {
+    if (isStage(scan, STAGE.NOT_STARTED)) {
       return (<Button variant="light" color="green"
                       onClick={startScan}
                       disabled={startDisabled}>{browser.i18n.getMessage('popup_startScanBtn')}</Button>);
-    } else if (isStage(scan, STAGE2.NOTICE_SELECTION)) {
+    } else if (isStage(scan, STAGE.NOTICE_SELECTION)) {
       return (<Button variant="light" color="orange"
                       onClick={noNotice}>{browser.i18n.getMessage('popup_noNoticeBtn')}</Button>);
-    } else if (isStage(scan, STAGE2.FINISHED)) {
+    } else if (isStage(scan, STAGE.FINISHED)) {
       const dataUrl = report;
       let today = new Date();
       let uniformDomain = urlToUniformDomain(scan.url);

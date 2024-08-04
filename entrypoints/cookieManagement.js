@@ -5,7 +5,7 @@ import {
   escapeString,
   INTERACTION_STATE,
   isAALabel,
-  Purpose,
+  IEPurpose,
   urlToUniformDomain,
 } from './modules/globals.js';
 import {predictClass} from './modules/predictor.js';

@@ -11,17 +11,24 @@ Released under the MIT License, see included LICENSE file.
 import {getCssSelector} from 'css-selector-generator';
 
 /**
- * A scan is always in one of these 4 stages.
- * - "initial": not yet started (scan can also be undefined in this stage),
- * - "necessary": started and just checking if non-essential cookies are being set by the website,
- * - "all": checking all cookie violations, a consent notice has been found if the scan is in this stage,
- * - "finished": the summary is being displayed
+ * Enum Object for possible purposes of interactive elements.
+ * @type {Readonly<{Reject: number, Accept: number, SaveSettings: number, Close: number, Settings: number, Other: number}>}
  */
-export const Purpose = Object.freeze({
+export const IEPurpose = Object.freeze({
   Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5,
 });
-export const SCANSTAGE = ['initial', 'necessary', 'all', 'finished'];
-export const STAGE2 = Object.freeze({
+
+/**
+ * Meanings of scan stages:
+ * - NOT_STARTED: default value
+ * - NOTICE_SELECTION: set for first level selection of the cookie notice
+ * - SECOND_SELECTION: set for second level selection of cookie notice (settings notice)
+ * - NOTICE_INTERACTION: automated clicking on interactive elements, e.g., Settings > Reject All
+ * - NOTICE_ANALYSIS: running of purpose detection and interactive element models
+ * - PAGE_INTERACTION: automated scrolling and clicking through the web page
+ * - FINISHED: end, report can be created
+ */
+export const STAGE = Object.freeze({
   NOT_STARTED: 0,
   NOTICE_SELECTION: 1,
   SECOND_SELECTION: 2,
@@ -36,20 +43,20 @@ export const DARK_PATTERN_STATUS = Object.freeze({
 });
 
 export const INITIAL_SCAN = {
-  stage2: STAGE2.NOT_STARTED,
-  'scanStart': null,
-  'scanEnd': null,
-  'url': null,
-  'interactiveElements': [],
+  stage: STAGE.NOT_STARTED,
+  scanStart: null,
+  scanEnd: null,
+  url: null,
+  interactiveElements: [],
   ieToInteract: [],
-  'purposeDeclared': false,
-  'noticeDetected': false,
-  'rejectDetected': false,
-  'closeSaveDetected': false,
-  'aaCookiesAfterReject': [],
-  'aaCookiesAfterSave': [],
-  'aaCookiesAfterClose': [],
-  'aaCookiesWONoticeInteraction': [],
+  purposeDeclared: false,
+  noticeDetected: false,
+  rejectDetected: false,
+  closeSaveDetected: false,
+  aaCookiesAfterReject: [],
+  aaCookiesAfterSave: [],
+  aaCookiesAfterClose: [],
+  aaCookiesWONoticeInteraction: [],
   forcedActionStatus: DARK_PATTERN_STATUS.NO_FORCED_ACTION,
   colorDistances: [],
 };
@@ -83,7 +90,12 @@ export const INITIAL_PROGRESS = Object.freeze({
   purpose: 0, purposeDownloading: false, ie: 0, ieDownloading: false,
 });
 export const NOTICE_STATUS = Object.freeze({
-  WRONG_FRAME: 'wrong_frame', SUCCESS: 'success', NOTICE_STILL_OPEN: 'notice_still_open', WRONG_SELECTOR: 'wrong_selector', NOTICE_CLOSED: 'notice_closed', ERROR: 'error'
+  WRONG_FRAME: 'wrong_frame',
+  SUCCESS: 'success',
+  NOTICE_STILL_OPEN: 'notice_still_open',
+  WRONG_SELECTOR: 'wrong_selector',
+  NOTICE_CLOSED: 'notice_closed',
+  ERROR: 'error',
 });
 
 export const SECOND_LVL_STATUS = Object.freeze({
@@ -602,17 +614,17 @@ export const classStringToIndex = (classStr) => {
 // Accept: 0, Close: 1, Settings: 2, Other: 3, Reject: 4, SaveSettings: 5,
 export function ieLabelToString(purpose) {
   switch (purpose) {
-    case Purpose.Accept:
+    case IEPurpose.Accept:
       return 'Accept';
-    case Purpose.Close :
+    case IEPurpose.Close :
       return 'Close';
-    case Purpose.Settings:
+    case IEPurpose.Settings:
       return 'Settings';
-    case Purpose.Other:
+    case IEPurpose.Other:
       return 'Other';
-    case Purpose.Reject:
+    case IEPurpose.Reject:
       return 'Reject';
-    case Purpose.SaveSettings:
+    case IEPurpose.SaveSettings:
       return 'Save Settings';
   }
 }

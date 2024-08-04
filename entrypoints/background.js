@@ -13,10 +13,10 @@ import {
   NOTICE_STATUS,
   openNotification,
   PAGE_COUNT,
-  Purpose,
+  IEPurpose,
   resetStorage,
   SECOND_LVL_STATUS,
-  STAGE2,
+  STAGE,
   updateTab,
   urlWoQueryOrFragment,
   waitStableFrames,
@@ -98,7 +98,7 @@ export default defineBackground({
       if (scan == null) {
         await resetStorage();
         await storage.setItem('local:stoppingScan', false);
-      } else if (scan.stage2 !== STAGE2.PAGE_INTERACTION) {
+      } else if (scan.stage !== STAGE.PAGE_INTERACTION) {
         if (URL.canParse(scan.url) && URL.canParse(changeInfo.url)) {
           let scanUrl = (new URL(scan.url)).hostname;
           let changeUrl = (new URL(changeInfo.url)).hostname;
@@ -151,10 +151,10 @@ export default defineBackground({
             browser.cookies.onChanged.removeListener(cookieListener);
 
             let scan = await storage.getItem('local:scan');
-            scan.stage2 = STAGE2.NOTICE_SELECTION;
-            scan['scanStart'] = Date.now();
+            scan.stage = STAGE.NOTICE_SELECTION;
+            scan.scanStart = Date.now();
             tabs = await browser.tabs.query({active: true});
-            scan['url'] = urlWoQueryOrFragment(tabs[0].url);
+            scan.url = urlWoQueryOrFragment(tabs[0].url);
             await storage.setItem('local:scan', scan);
 
             await waitStableFrames(tabs[0].id);
@@ -185,8 +185,8 @@ export default defineBackground({
             if (selection == null) reject(new Error('local:selection should be set'));
 
             scan = await storage.getItem('local:scan');
-            scan.stage2 = STAGE2.NOTICE_ANALYSIS;
-            scan['noticeDetected'] = true;
+            scan.stage = STAGE.NOTICE_ANALYSIS;
+            scan.noticeDetected = true;
             await storage.setItem('local:scan', scan);
 
             // Skip initial check for local models, since we are not loading any local models.
@@ -223,7 +223,7 @@ export default defineBackground({
               selection.notice.label = 0;
             }
             scan = await storage.getItem('local:scan');
-            scan['purposeDeclared'] = purposeDeclared;
+            scan.purposeDeclared = purposeDeclared;
             await storage.setItem('local:scan', scan);
 
             let ieClassifier = await IEPipelineSingleton.getInstance(USE_QUANTIZED);
@@ -247,12 +247,12 @@ export default defineBackground({
             await storage.setItem('local:selection', selection);
 
             interactiveElements = {};
-            interactiveElements[Purpose.Accept] = [];
-            interactiveElements[Purpose.Close] = [];
-            interactiveElements[Purpose.Settings] = [];
-            interactiveElements[Purpose.Other] = [];
-            interactiveElements[Purpose.Reject] = [];
-            interactiveElements[Purpose.SaveSettings] = [];
+            interactiveElements[IEPurpose.Accept] = [];
+            interactiveElements[IEPurpose.Close] = [];
+            interactiveElements[IEPurpose.Settings] = [];
+            interactiveElements[IEPurpose.Other] = [];
+            interactiveElements[IEPurpose.Reject] = [];
+            interactiveElements[IEPurpose.SaveSettings] = [];
 
             for (let i = 0; i < selection.interactiveObjects.length; i++) {
               let obj = selection.interactiveObjects[i];
@@ -260,44 +260,44 @@ export default defineBackground({
             }
 
             scan = await storage.getItem('local:scan');
-            scan['stage2'] = STAGE2.NOTICE_INTERACTION;
-            scan['interactiveElements'] = interactiveElements;
-            scan['rejectDetected'] = (interactiveElements[Purpose.Reject].length > 0);
-            scan['closeSaveDetected'] = (interactiveElements[Purpose.Close].length > 0) ||
-                (interactiveElements[Purpose.SaveSettings].length > 0);
+            scan.stage = STAGE.NOTICE_INTERACTION;
+            scan.interactiveElements = interactiveElements;
+            scan.rejectDetected = (interactiveElements[IEPurpose.Reject].length > 0);
+            scan.closeSaveDetected = (interactiveElements[IEPurpose.Close].length > 0) ||
+                (interactiveElements[IEPurpose.SaveSettings].length > 0);
             await storage.setItem('local:scan', scan);
             scan = null;
 
             // add interactive elements that have to be interacted with, on the first level
             let ieToInteract = [];
-            for (const iElement of interactiveElements[Purpose.Reject]) {
+            for (const iElement of interactiveElements[IEPurpose.Reject]) {
               ieToInteract.push(iElement);
             }
-            for (const iElement of interactiveElements[Purpose.Close]) {
+            for (const iElement of interactiveElements[IEPurpose.Close]) {
               ieToInteract.push(iElement);
             }
-            for (const iElement of interactiveElements[Purpose.SaveSettings]) {
+            for (const iElement of interactiveElements[IEPurpose.SaveSettings]) {
               ieToInteract.push(iElement);
             }
 
             // if there are one or multiple setting buttons,
             // we have to inspect if there is a relevant second level
             let twoLevelInteractiveElements = {};
-            twoLevelInteractiveElements[Purpose.Accept] = [];
-            twoLevelInteractiveElements[Purpose.Close] = [];
-            twoLevelInteractiveElements[Purpose.Settings] = [];
-            twoLevelInteractiveElements[Purpose.Other] = [];
-            twoLevelInteractiveElements[Purpose.Reject] = [];
-            twoLevelInteractiveElements[Purpose.SaveSettings] = [];
+            twoLevelInteractiveElements[IEPurpose.Accept] = [];
+            twoLevelInteractiveElements[IEPurpose.Close] = [];
+            twoLevelInteractiveElements[IEPurpose.Settings] = [];
+            twoLevelInteractiveElements[IEPurpose.Other] = [];
+            twoLevelInteractiveElements[IEPurpose.Reject] = [];
+            twoLevelInteractiveElements[IEPurpose.SaveSettings] = [];
 
-            // if Purpose.Settings interactive elements were detected, we only inspect them
-            // otherwise, we have to inspect Purpose.Other buttons interactive elements
+            // if IEPurpose.Settings interactive elements were detected, we only inspect them
+            // otherwise, we have to inspect IEPurpose.Other buttons interactive elements
             let ieToSndLevel;
-            if (interactiveElements[Purpose.Settings].length > 0) {
-              ieToSndLevel = interactiveElements[Purpose.Settings];
+            if (interactiveElements[IEPurpose.Settings].length > 0) {
+              ieToSndLevel = interactiveElements[IEPurpose.Settings];
             } else {
               // we remove anchor tags as they often open a new page
-              let filteredOther = interactiveElements[Purpose.Other].filter(obj => obj.tagName.toLowerCase() !== 'a');
+              let filteredOther = interactiveElements[IEPurpose.Other].filter(obj => obj.tagName.toLowerCase() !== 'a');
               // we sort such
               // that the buttons on the bottom left are first in the list
               let sortedOther = filteredOther.sort((a, b) => {
@@ -396,20 +396,20 @@ export default defineBackground({
             ieClassifier = null;
 
             // add the relevant twoLevelInteractiveElements to the list of ieToInteract
-            for (const iElement of twoLevelInteractiveElements[Purpose.Reject]) {
+            for (const iElement of twoLevelInteractiveElements[IEPurpose.Reject]) {
               ieToInteract.push(iElement);
             }
-            for (const iElement of twoLevelInteractiveElements[Purpose.Close]) {
+            for (const iElement of twoLevelInteractiveElements[IEPurpose.Close]) {
               ieToInteract.push(iElement);
             }
-            for (const iElement of twoLevelInteractiveElements[Purpose.SaveSettings]) {
+            for (const iElement of twoLevelInteractiveElements[IEPurpose.SaveSettings]) {
               ieToInteract.push(iElement);
             }
 
             console.log('ieToInteract, in both levels combined:', ieToInteract);
             scan = await storage.getItem('local:scan');
             scan.ieToInteract = ieToInteract;
-            scan.stage2 = STAGE2.PAGE_INTERACTION;
+            scan.stage = STAGE.PAGE_INTERACTION;
             await storage.setItem('local:scan', scan);
             let ieToInteractLength = scan.ieToInteract.length;
             scan = null;
@@ -528,7 +528,7 @@ export default defineBackground({
               }
             }
 
-            if (interactiveElements[Purpose.Accept].length > 0) {
+            if (interactiveElements[IEPurpose.Accept].length > 0) {
               // check for forced action - dark pattern
               const forcedActionRet = await browser.scripting.executeScript({
                 target: {tabId: tabs[0].id}, files: ['checkForcedAction.js'], injectImmediately: true,
@@ -542,7 +542,7 @@ export default defineBackground({
                * @type {Interaction}
                */
               let interaction = await storage.getItem('local:interaction');
-              interaction.ie = interactiveElements[Purpose.Accept][0];
+              interaction.ie = interactiveElements[IEPurpose.Accept][0];
               await storage.setItem('local:interaction', interaction);
 
               tabs = await browser.tabs.query({active: true});
@@ -622,7 +622,7 @@ export default defineBackground({
             });
             if (reportRet[0].result === 'success') {
               scan = await storage.getItem('local:scan');
-              scan.stage2 = STAGE2.FINISHED;
+              scan.stage = STAGE.FINISHED;
               await storage.setItem('local:scan', scan);
               scan = null;
               await openNotification(tabs[0].id, browser.i18n.getMessage('background_finishedReportTitle'),
@@ -708,8 +708,8 @@ export default defineBackground({
 
     async function scanIsRunning() {
       const scan = await storage.getItem('local:scan');
-      if (scan == null || scan.stage2 == null || scan.stage2 === STAGE2.NOT_STARTED || scan.stage2 ===
-          STAGE2.FINISHED) {
+      if (scan == null || scan.stage == null || scan.stage === STAGE.NOT_STARTED || scan.stage ===
+          STAGE.FINISHED) {
         return false;
       } else {
         return true;
@@ -727,7 +727,7 @@ export default defineBackground({
      */
     async function handleNewNotice(ieClassifier, twoLevelInteractiveElements, iElement, USE_QUANTIZED) {
       let scan = await storage.getItem('local:scan');
-      scan.stage2 = STAGE2.SECOND_SELECTION;
+      scan.stage = STAGE.SECOND_SELECTION;
       await storage.setItem('local:scan', scan);
 
       let tabs = await browser.tabs.query({active: true});
@@ -761,7 +761,7 @@ export default defineBackground({
         }
 
         scan = await storage.getItem('local:scan');
-        scan.stage2 = STAGE2.NOTICE_ANALYSIS;
+        scan.stage = STAGE.NOTICE_ANALYSIS;
         await storage.setItem('local:scan', scan);
         scan = null;
 
@@ -787,11 +787,11 @@ export default defineBackground({
 
       const tabs = await browser.tabs.query({active: true});
       let text, title, action, inaction;
-      if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
+      if (scan.stage === STAGE.NOTICE_SELECTION) {
         title = browser.i18n.getMessage('selector_selectNoticeTitle');
         text = browser.i18n.getMessage('selector_selectNoticeText');
         return await openNotification(tabs[0].id, title, text, 'orange');
-      } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
+      } else if (scan.stage === STAGE.SECOND_SELECTION) {
         title = browser.i18n.getMessage('selector_selectNewNoticeTitle');
         text = browser.i18n.getMessage('selector_selectNewNoticeText');
         action = browser.i18n.getMessage('selector_startNewNoticeSelectBtn');
@@ -806,22 +806,22 @@ export default defineBackground({
     /**
      * Converts logits into the purpose of the interactive element.
      * @param {Object} modelRes The result of the interactive_element_model
-     * @return {number} Integer that corresponds to a value in the Purpose object
+     * @return {number} Integer that corresponds to a value in the IEPurpose object
      */
     function getIELabel(modelRes) {
       let label = modelRes.label;
       if (label === 'LABEL_0') {
-        return Purpose.Accept;
+        return IEPurpose.Accept;
       } else if (label === 'LABEL_1') {
-        return Purpose.Close;
+        return IEPurpose.Close;
       } else if (label === 'LABEL_2') {
-        return Purpose.Settings;
+        return IEPurpose.Settings;
       } else if (label === 'LABEL_3') {
-        return Purpose.Other;
+        return IEPurpose.Other;
       } else if (label === 'LABEL_4') {
-        return Purpose.Reject;
+        return IEPurpose.Reject;
       } else if (label === 'LABEL_5') {
-        return Purpose.SaveSettings;
+        return IEPurpose.SaveSettings;
       } else throw new Error('Impossible maxIndex');
     }
 
@@ -928,7 +928,7 @@ export default defineBackground({
       const segmentIter = segmenterEn.segment(translatedNoticeText);
       const sentences = Array.from(segmentIter).map(obj => obj.segment);
 
-      if (purposeClassifier == null) throw new Error('Purpose Classifier is null');
+      if (purposeClassifier == null) throw new Error('IEPurpose Classifier is null');
       for (let sentence of sentences) {
         const res = await purposeClassifier(sentence);
         const classification = parseInt(res[0].label);
@@ -1266,16 +1266,16 @@ export default defineBackground({
       if (interactionState === INTERACTION_STATE.PAGE_W_NOTICE) {
         // analyze cookies after interaction with both notice and page
 
-        if ([Purpose.Reject, Purpose.SaveSettings, Purpose.Close].includes(interaction?.ie?.label)) {
+        if ([IEPurpose.Reject, IEPurpose.SaveSettings, IEPurpose.Close].includes(interaction?.ie?.label)) {
           if (aaCookies.length > 0) {
             const entry = {
               ie: interaction.ie, aaCookies: aaCookies,
             };
-            if (interaction.ie.label === Purpose.Reject) {
+            if (interaction.ie.label === IEPurpose.Reject) {
               scan.aaCookiesAfterReject.push(entry);
-            } else if (interaction.ie.label === Purpose.SaveSettings) {
+            } else if (interaction.ie.label === IEPurpose.SaveSettings) {
               scan.aaCookiesAfterSave.push(entry);
-            } else if (interaction.ie.label === Purpose.Close) {
+            } else if (interaction.ie.label === IEPurpose.Close) {
               scan.aaCookiesAfterClose.push(entry);
             }
 

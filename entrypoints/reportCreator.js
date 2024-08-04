@@ -1,6 +1,6 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import {
-  classIndexToString, COLOR_DIST_THRESHOLD, DARK_PATTERN_STATUS, ieLabelToString, Purpose,
+  classIndexToString, COLOR_DIST_THRESHOLD, DARK_PATTERN_STATUS, ieLabelToString, IEPurpose,
 } from './modules/globals';
 import * as pdfFonts from './modules/vfs_fonts';
 

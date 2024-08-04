@@ -2,7 +2,7 @@ import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react'
 import {useEffect, useRef, useState} from 'react';
 import './App.module.css';
 import {storage} from 'wxt/storage';
-import {get_clickable_elements, selectionFromSelectedNotice, STAGE2} from '../modules/globals.js';
+import {get_clickable_elements, selectionFromSelectedNotice, STAGE} from '../modules/globals.js';
 
 export default () => {
   const unwatchMousemoveRef = useRef(null);
@@ -253,7 +253,7 @@ export default () => {
   }
 
   /**
-   * When a user clicks the cancel button inside a selector context menu, we update the stage2 to not_started and reset all relevant data such that the user can select something new
+   * When a user clicks the cancel button inside a selector context menu, we update the stage to not_started and reset all relevant data such that the user can select something new
    */
   async function handleCancelBtn() {
     if (cancelHandled.current) return;
@@ -357,9 +357,9 @@ export default () => {
     }, 500);
 
     const scan = await storage.getItem('local:scan');
-    if (scan.stage2 === STAGE2.NOTICE_SELECTION) {
+    if (scan.stage === STAGE.NOTICE_SELECTION) {
       await storage.setItem('local:selection', selection);
-    } else if (scan.stage2 === STAGE2.SECOND_SELECTION) {
+    } else if (scan.stage === STAGE.SECOND_SELECTION) {
       /**
        * @type {Selection[]}
        */

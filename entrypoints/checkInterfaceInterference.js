@@ -1,6 +1,6 @@
 import Color from 'colorjs.io';
 import {FastAverageColor} from 'fast-average-color';
-import {MAX_OTHER_BTN_COUNT, Purpose} from './modules/globals.js';
+import {MAX_OTHER_BTN_COUNT, IEPurpose} from './modules/globals.js';
 
 /**
  * @param {InteractiveObject} ie
@@ -88,11 +88,11 @@ export default defineUnlistedScript(async () => {
     const colorDistances = [];
     // We iterate over all `Accept` buttons.
     // We then calculate the colorDistances of the `Accept` buttons to all `Reject`, `Settings`, `SaveSettings` buttons.
-    for (let i = 0; i < scan.interactiveElements[Purpose.Accept].length; i++) {
+    for (let i = 0; i < scan.interactiveElements[IEPurpose.Accept].length; i++) {
       /** @type {InteractiveObject} */
       let acceptIe;
-      if (scan.interactiveElements[Purpose.Accept][i].selector.length === 1) {
-        acceptIe = scan.interactiveElements[Purpose.Accept][i];
+      if (scan.interactiveElements[IEPurpose.Accept][i].selector.length === 1) {
+        acceptIe = scan.interactiveElements[IEPurpose.Accept][i];
       } else {
         continue;
       }
@@ -104,13 +104,13 @@ export default defineUnlistedScript(async () => {
       }
 
       // Calculate color distances between Accept and Reject buttons of the first layer.
-      for (let i = 0; i < scan.interactiveElements[Purpose.Reject].length; i++) {
+      for (let i = 0; i < scan.interactiveElements[IEPurpose.Reject].length; i++) {
         /** @type {InteractiveObject} */
         let rejectIe;
 
         // We only look at first level buttons.
-        if (scan.interactiveElements[Purpose.Reject][i].selector.length === 1) {
-          rejectIe = scan.interactiveElements[Purpose.Reject][i];
+        if (scan.interactiveElements[IEPurpose.Reject][i].selector.length === 1) {
+          rejectIe = scan.interactiveElements[IEPurpose.Reject][i];
         } else {
           continue;
         }
@@ -127,13 +127,13 @@ export default defineUnlistedScript(async () => {
       }
 
       // Calculate color distance between Accept and Settings buttons of the first layer.
-      for (let i = 0; i < scan.interactiveElements[Purpose.Settings].length; i++) {
+      for (let i = 0; i < scan.interactiveElements[IEPurpose.Settings].length; i++) {
         /** @type {InteractiveObject} */
         let settingsIe;
 
         // We only look at first level buttons.
-        if (scan.interactiveElements[Purpose.Settings][i].selector.length === 1) {
-          settingsIe = scan.interactiveElements[Purpose.Settings][i];
+        if (scan.interactiveElements[IEPurpose.Settings][i].selector.length === 1) {
+          settingsIe = scan.interactiveElements[IEPurpose.Settings][i];
         } else {
           continue;
         }
@@ -150,13 +150,13 @@ export default defineUnlistedScript(async () => {
       }
 
       // Calculate color distance between Accept and SaveSettings buttons of the first layer.
-      for (let i = 0; i < scan.interactiveElements[Purpose.SaveSettings].length; i++) {
+      for (let i = 0; i < scan.interactiveElements[IEPurpose.SaveSettings].length; i++) {
         /** @type {InteractiveObject} */
         let saveSettingsIe;
 
         // We only look at first level buttons.
-        if (scan.interactiveElements[Purpose.SaveSettings][i].selector.length === 1) {
-          saveSettingsIe = scan.interactiveElements[Purpose.SaveSettings][i];
+        if (scan.interactiveElements[IEPurpose.SaveSettings][i].selector.length === 1) {
+          saveSettingsIe = scan.interactiveElements[IEPurpose.SaveSettings][i];
         } else {
           continue;
         }
@@ -172,9 +172,9 @@ export default defineUnlistedScript(async () => {
         });
       }
 
-      // If there are no buttons except Purpose.Other, we calculate the distance to them.
+      // If there are no buttons except IEPurpose.Other, we calculate the distance to them.
       if (colorDistances.length === 0) {
-        let sortedOther = scan.interactiveElements[Purpose.Other].sort((a, b) => {
+        let sortedOther = scan.interactiveElements[IEPurpose.Other].sort((a, b) => {
           if (a.y[0] > b.y[0]) return -1;  // Sort y descending
           if (a.y[0] < b.y[0]) return 1;
           if (a.x[0] < b.x[0]) return -1;  // Sort x ascending
