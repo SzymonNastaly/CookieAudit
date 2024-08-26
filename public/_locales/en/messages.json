@@ -85,10 +85,10 @@
     "message": "Downloading models for notice analysis."
   },
   "popup_downloadJsonBtn": {
-    "message": "Download JSON Report"
+    "message": "Generate JSON Report"
   },
   "popup_downloadPdfBtn": {
-    "message": "Download PDF Report"
+    "message": "Generate PDF Report"
   },
   "popup_errorTitle": {
     "message": "Error"

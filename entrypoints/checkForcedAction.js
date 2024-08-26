@@ -9,7 +9,7 @@ export default defineUnlistedScript(async () => {
   let noticeRect = selection.notice.rect;
   const clickableInBody = get_clickable_elements(document.body);
 
-  const MIN_CLICKABLE_COUNT = 20;
+  const MIN_CLICKABLE_COUNT = 10;
   let checkedClickables = 0;
   /**
    * @type {string[]}
