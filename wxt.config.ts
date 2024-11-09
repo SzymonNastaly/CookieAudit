@@ -12,7 +12,7 @@ export default defineConfig({
   manifest: {
     name: 'Cookie Audit',
     description: 'Investigate cookie compliance on websites.',
-    version: '2024.7.13',
+    version: '2024.11.9',
     default_locale: 'en',
     permissions: [
       'cookies',
