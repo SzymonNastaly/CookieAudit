@@ -1,6 +1,7 @@
 import {env, pipeline} from '@xenova/transformers';
 import {Mutex} from 'async-mutex';
 import {storage} from 'wxt/storage';
+import {debug} from './debug.js';
 import {constructKeyFromCookie, handleCookie} from './cookieManagement.js';
 import {
   awaitNoDOMChanges,
@@ -37,7 +38,9 @@ export default defineBackground({
        * @return {Promise<function(string): Promise<Array<{label: string}>>>}
        */
       static async getInstance(quantized = false) {
+        debug.log("Getting pipeline instance, quantized:", quantized);
         if (this.instance === null) {
+          debug.log("Creating new pipeline instance");
           this.instance = pipeline('text-classification', 'snastal/purpose_detection_model', {
             quantized: quantized, progress_callback: purposeProgress,
           });
@@ -73,6 +76,7 @@ export default defineBackground({
       }
     }
 
+    debug.log("Extension installed/updated, resetting storage");
     // Whenever CookieAudit is installed or updated to a new version, we open the onboarding page.
     browser.runtime.onInstalled.addListener(async function(object) {
       await resetStorage();
@@ -122,7 +126,9 @@ export default defineBackground({
     // Handlers for all messages sent to the background script.
     browser.runtime.onMessage.addListener(function(message, _, sendResponse) {
       let {msg} = message;
+      debug.log("Received message:", msg);
       if (msg === 'start_scan') {
+        debug.log("Starting scan process");
         sendResponse({msg: 'ok'});
         let interactiveElements;
         const USE_QUANTIZED = true;
@@ -159,15 +165,19 @@ export default defineBackground({
 
             await waitStableFrames(tabs[0].id);
             let frames = await browser.webNavigation.getAllFrames({tabId: tabs[0].id});
+            debug.log("Found frames:", frames);
             let promises = [];
             for (let frame of frames.values()) {
               if (frame.url !== 'about:blank') {
+                debug.log(`Sending mount_select to frame ${frame.frameId}`);
                 promises.push(browser.tabs.sendMessage(tabs[0].id, {msg: 'mount_select'}, {frameId: frame.frameId}));
               }
             }
 
             const mountResponses = await Promise.allSettled(promises);
+            debug.log("Mount responses:", mountResponses);
             if (mountResponses.some(res => res.status === 'fulfilled' && res.value.msg !== 'ok')) {
+              debug.log("Mount responses failed validation:", mountResponses);
               throw new Error('mount_select not confirmed by content script');
             }
 
@@ -637,8 +647,10 @@ export default defineBackground({
           });
 
           if (result === 'scan_stop') {
+            debug.log("Scan stopped, cleaning up connections");
             // The `background.js` has stopped. We can now reset and reload
             if (browser.cookies.onChanged.hasListener(cookieListener)) {
+              debug.log("Removing cookie listener");
               browser.cookies.onChanged.removeListener(cookieListener);
             }
 
@@ -708,8 +720,7 @@ export default defineBackground({
 
     async function scanIsRunning() {
       const scan = await storage.getItem('local:scan');
-      if (scan == null || scan.stage == null || scan.stage === STAGE.NOT_STARTED || scan.stage ===
-          STAGE.FINISHED) {
+      if (scan == null || scan.stage == null || scan.stage === STAGE.NOT_STARTED || scan.stage === STAGE.FINISHED) {
         return false;
       } else {
         return true;
@@ -1147,9 +1158,11 @@ export default defineBackground({
      * @returns {Promise<number[]>}
      */
     async function nonBlankFrameIds(tabId) {
+      debug.log("Getting non-blank frame IDs for tab:", tabId);
       /** @type {GetAllFramesCallbackDetailsItemType[] | null} */
       let frames = await browser.webNavigation.getAllFrames({tabId: tabId});
       frames = frames.filter(frame => frame.url !== 'about:blank');
+      debug.log("Found non-blank frames:", frames);
       return frames.map(frame => frame.frameId);
     }
 
@@ -1178,8 +1191,10 @@ export default defineBackground({
      * Remove a cookie from the browser and from historyDB
      */
     async function clearCookies() {
+      debug.log("Starting cookie clearance");
       await mutex.runExclusive(async () => {
         const all_cookies = await browser.cookies.getAll({});
+        debug.log(`Found ${all_cookies.length} cookies to remove`);
         let promises = [];
         for (let i = 0; i < all_cookies.length; i++) {
           promises.push(removeCookie(all_cookies[i]));

@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from 'react';
 import './styles.css';
+import {debug} from '../debug.js';
 import {delay} from '../modules/globals.js';
 
 export default () => {
@@ -32,7 +33,9 @@ export default () => {
   }
 
   async function notificationTime(text) {
+    debug.log('[Storage] Attempting to retrieve settings');
     let settings = await storage.getItem('local:settings');
+    debug.log('[Storage] Retrieved settings:', settings);
     if (settings != null && settings.fastMode) {
       return 100;
     }
@@ -82,8 +85,14 @@ export default () => {
    * @param sendResponse
    */
   function handleNotificationMessage(message, sender, sendResponse) {
+    debug.log('[Connection] Message received:', {
+      type: message.msg,
+      sender: sender.id,
+      hasResponse: !!sendResponse
+    });
     const {msg} = message;
     if (msg === 'dialog') {
+      debug.log('[Connection] Processing dialog message');
       const {title, text, color} = message;
       setTitle(title);
       setText(text);
@@ -93,6 +102,7 @@ export default () => {
         el.showModal();
         el.addEventListener('click', closeEl);
         let time = await notificationTime(text);
+        debug.log('[Storage] Successfully calculated notification time');
         await delay(time);
         if (el.open) {
           el.removeEventListener('click', closeEl);
@@ -102,6 +112,7 @@ export default () => {
       })();
       return true;
     } else if (msg === 'popover') {
+      debug.log('[Connection] Processing popover message');
       const {title, text, color, buttons} = message;
       setTitle(title);
       setText(text);
@@ -140,10 +151,14 @@ export default () => {
   }
 
   useEffect(() => {
+    debug.log('[Connection] Initializing message listener');
     browser.runtime.onMessage.addListener(handleNotificationMessage);
+    debug.log('[Connection] Message listener successfully initialized');
 
     return () => {
+      debug.log('[Connection] Cleaning up message listener');
       browser.runtime.onMessage.removeListener(handleNotificationMessage);
+      debug.log('[Connection] Message listener successfully removed');
     };
   }, []);
 

@@ -3,6 +3,7 @@ import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import '@mantine/core/styles.css';
 import {storage} from 'wxt/storage';
+import {debug} from '../debug.js';
 import {
   classIndexToString,
   DARK_PATTERN_STATUS,
@@ -15,6 +16,7 @@ import {
 } from '../modules/globals.js';
 
 function createJsonDataUrl(jsonObject) {
+  debug.log("Creating JSON data URL");
   const jsonString = JSON.stringify(jsonObject, null, 2);
 
   const utf8Encoder = new TextEncoder();
@@ -30,10 +32,13 @@ function createJsonDataUrl(jsonObject) {
  * @returns {Promise<String|null>} Url.
  */
 async function getURL() {
+  debug.log("Getting active tab URL");
   let queryOptions = {active: true};
   // `tab` will either be a `tabs.Tab` instance or `undefined`.
   let [tab] = await browser.tabs.query(queryOptions);
+  debug.log("Active tab query result:", tab);
   if (!tab || !tab.url) {
+    debug.log("No valid tab or URL found");
     return null;
   }
   return urlWoQueryOrFragment(tab.url);
@@ -58,6 +63,8 @@ export default function App() {
   // Once finished, contains a dataUrl of the pdf scan report
   const [report, setReport] = useState(null);
 
+  const [ackCookieDelete, setAckCookieDelete] = useState(false);
+
   function setScan(s) {
     _setScan(s);
     scanRef.current = s;
@@ -69,13 +76,17 @@ export default function App() {
   const startDisabled = !resetBeforeScan || illegalUrl || isLoading || stoppingScan;
 
   useEffect(() => {
+    debug.log("Initializing App component");
     storage.getItem('local:scan').then((localScan) => {
-      console.log('getting local:scan', localScan);
+      debug.log("Retrieved local:scan from storage:", localScan);
       if (localScan != null) {
         setScan(localScan);
       }
+    }).catch(err => {
+      debug.log("Error retrieving local:scan:", err);
     });
     storage.getItem('local:progress').then((progress) => {
+      debug.log("Retrieved local:progress from storage:", progress);
       if (progress != null) {
         setIeProgress({
           isDownloading: progress.ieDownloading, value: progress.ie,
@@ -84,6 +95,8 @@ export default function App() {
           isDownloading: progress.purposeDownloading, value: progress.purpose,
         });
       }
+    }).catch(err => {
+      debug.log("Error retrieving local:progress:", err);
     });
     storage.getItem('local:resetBeforeScan').then((wasReset) => {
       if (wasReset == null) {
@@ -99,6 +112,21 @@ export default function App() {
     storage.getItem('local:stoppingScan').then((v) => {
       setStoppingScan(v);
     });
+    storage.getItem('local:settings').then((settings) => {
+      if (settings == null) {
+        settings = {
+          ackCookieDelete: false,
+        };
+        storage.setItem('local:settings', settings);
+        setAckCookieDelete(false);
+      } else if (settings.ackCookieDelete == null) {
+        settings.ackCookieDelete = false;
+        storage.setItem('local:settings', settings);
+        setAckCookieDelete(false);
+      } else {
+        setAckCookieDelete(settings.ackCookieDelete);
+      }
+    });
 
     (async () => {
       const url = await getURL();
@@ -112,6 +140,7 @@ export default function App() {
     const unwatchScan = storage.watch('local:scan', (newScan, _) => {
       setScan(newScan);
     });
+    debug.log("Setting up storage watchers");
     const unwatchProgress = storage.watch('local:progress', (newProgress, _) => {
       if (newProgress != null) {
         setIeProgress({
@@ -136,6 +165,7 @@ export default function App() {
     });
 
     return () => {
+      debug.log("Cleaning up storage watchers");
       unwatchScan();
       unwatchProgress();
       unwatchReset();
@@ -157,10 +187,13 @@ export default function App() {
    * This function is called when a user clicks the start button. It creates a new empty scan object and stores it in the chrome storage.
    */
   async function startScan() {
+    debug.log("Starting scan...");
     const tabs = await browser.tabs.query({});
+    debug.log("Found tabs:", tabs);
     let windows = new Set(tabs.map(tab => tab.windowId));
 
     if (windows.size > 1) {
+      debug.log("Error: Multiple windows detected");
       await openNotification(tabs[0].id, browser.i18n.getMessage('popup_errorTitle'),
           browser.i18n.getMessage('popup_tooManyWindowsText'), 'red');
       return;
@@ -170,26 +203,44 @@ export default function App() {
       return;
     }
 
-    console.log('Starting scan...');
-    const {msg} = await browser.runtime.sendMessage({msg: 'start_scan'});
-    if (msg !== 'ok') throw new Error('start_scan was not confirmed by background.js');
+    try {
+      debug.log("Sending start_scan message to background");
+      const {msg} = await browser.runtime.sendMessage({msg: 'start_scan'});
+      if (msg !== 'ok') throw new Error('start_scan was not confirmed by background.js');
+    } catch (err) {
+      debug.log("Error during start_scan:", err);
+      throw err;
+    }
+
 
     // close popup
     window.close();
   }
 
   async function noNotice() {
-    const {msg} = await browser.runtime.sendMessage({msg: 'no_notice'});
-    if (msg !== 'ok') throw new Error('no_notice was not confirmed by background.js');
+    debug.log("Sending no_notice message to background");
+    try {
+      const {msg} = await browser.runtime.sendMessage({msg: 'no_notice'});
+      debug.log("Received response from background:", msg);
+      if (msg !== 'ok') throw new Error('no_notice was not confirmed by background.js');
+    } catch (err) {
+      debug.log("Error during no_notice:", err);
+      throw err;
+    }
   }
 
   async function cancelScan() {
+    debug.log("Canceling scan...");
     setIsLoading(true);
-    const response = await browser.runtime.sendMessage({msg: 'cancel_scan'});
-    console.log('response after cancel_scan', response);
-    if (response.msg !== 'ok') throw new Error('cancel_scan was not confirmed by background.js');
+    try {
+      const response = await browser.runtime.sendMessage({msg: 'cancel_scan'});
+      debug.log("Received response after cancel_scan:", response);
+      if (response.msg !== 'ok') throw new Error('cancel_scan was not confirmed by background.js');
+    } catch (err) {
+      debug.log("Error during cancel_scan:", err);
+      throw err;
+    }
     setIsLoading(false);
-    // close popup
     window.close();
   }
 
@@ -358,30 +409,60 @@ export default function App() {
     </Stack>);
   }
 
-  return (<MantineProvider>
-    <Center maw={800} p={20}>
-      <Stack align="stretch"
-             justify="space-around"
-             gap="xs">
-        <Text fw={700} ta="center">CookieAudit</Text>
-        <CurrentScan scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
-                     report={report} modelsAreDownloading={modelsAreDownloading} stoppingScan={stoppingScan}/>
-        <Group justify="center">
-          {modelsAreDownloading && (<Stack justify="flex-start" align="stretch">
-            <Text>{browser.i18n.getMessage('popup_download')}</Text>
-            <Progress
-                value={(purposeProgress.value + ieProgress.value) / 2}/>
-            <Divider my="xs"/>
-          </Stack>)}
-        </Group>
-        <Button variant="light" color="red" disabled={stoppingScan}
-                onClick={cancelScan}>{browser.i18n.getMessage('popup_cancelScanBtn')}</Button>
-        <Group justify="center">
-          <Anchor href={browser.runtime.getURL('/onboarding.html')} target="_blank" size="xs">
-            {browser.i18n.getMessage('popup_helpPageLink')}
-          </Anchor>
-        </Group>
-      </Stack>
-    </Center>
-  </MantineProvider>);
+  function confirmCookieDeleteInfo() {
+    // set settingsvalue to true
+    storage.getItem('local:settings').then((settings) => {
+      settings.ackCookieDelete = true;
+      storage.setItem('local:settings', settings);
+      setAckCookieDelete(true);
+    });
+  }
+
+  function CookieDeleteInfo() {
+    return (<Stack justify="flex-start" align="stretch">
+      <Text>{browser.i18n.getMessage('popup_cookieDeleteInfo')}</Text>
+      <Button variant="light" color="green"
+              onClick={confirmCookieDeleteInfo}>{browser.i18n.getMessage('popup_okBtn')}</Button>
+    </Stack>);
+  }
+
+  if (!ackCookieDelete) {
+    return (<MantineProvider>
+          <Center maw={800} p={20}>
+            <Stack align="stretch"
+                   justify="space-around"
+                   gap="xs">
+              <Text fw={700} ta="center">CookieAudit</Text>
+              <CookieDeleteInfo/>
+            </Stack>
+          </Center>
+        </MantineProvider>);
+  } else {
+    return (<MantineProvider>
+      <Center maw={800} p={20}>
+        <Stack align="stretch"
+               justify="space-around"
+               gap="xs">
+          <Text fw={700} ta="center">CookieAudit</Text>
+          <CurrentScan scan={scan} illegalUrl={illegalUrl} isLoading={isLoading} resetBeforeScan={resetBeforeScan}
+                       report={report} modelsAreDownloading={modelsAreDownloading} stoppingScan={stoppingScan}/>
+          <Group justify="center">
+            {modelsAreDownloading && (<Stack justify="flex-start" align="stretch">
+              <Text>{browser.i18n.getMessage('popup_download')}</Text>
+              <Progress
+                  value={(purposeProgress.value + ieProgress.value) / 2}/>
+              <Divider my="xs"/>
+            </Stack>)}
+          </Group>
+          <Button variant="light" color="red" disabled={stoppingScan}
+                  onClick={cancelScan}>{browser.i18n.getMessage('popup_cancelScanBtn')}</Button>
+          <Group justify="center">
+            <Anchor href={browser.runtime.getURL('/onboarding.html')} target="_blank" size="xs">
+              {browser.i18n.getMessage('popup_helpPageLink')}
+            </Anchor>
+          </Group>
+        </Stack>
+      </Center>
+    </MantineProvider>);
+  }
 }

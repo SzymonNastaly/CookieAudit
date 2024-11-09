@@ -1,5 +1,28 @@
 # Devlog
 
+## September 5, 2024
+### Analysis of necessary changes for Firefox compatibility
+* browser.runtime.onInstalled available
+* browser.runtime.getManifest() available
+* browser.runtime.OnInstalledReason available
+* browser.tabs.create available
+* browser.runtime.onStartup available
+* browser.tabs.onUpdated available
+* browser.runtime.onMessage available
+* browser.tabs.query available
+* browser.cookies.onChanged available
+* browser.webNavigation.getAllFrames available
+* browser.tabs.sendMessage available
+* browser.scripting.executeScript available
+* browser.i18n.getMessage available
+* browser.tabs.captureVisibleTab available
+* browser.runtime.reload available
+* browser.i18n.detectLanguage available
+* browser.cookies.remove available
+* browser.cookies.getAll available
+* browser.runtime.getURL available
+* browser.tabs.update available
+
 ## July 13, 2024
 * removing the root option for getCssSelector, maybe this fixes the issues on forum-bmw.fr
   * need to test it then for websites with iframe/shadow root notices

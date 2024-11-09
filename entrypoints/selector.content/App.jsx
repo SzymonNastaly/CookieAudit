@@ -2,6 +2,7 @@ import {IconArrowDown, IconArrowUp, IconCheck, IconX} from '@tabler/icons-react'
 import {useEffect, useRef, useState} from 'react';
 import './App.module.css';
 import {storage} from 'wxt/storage';
+import {debug} from '../debug.js';
 import {get_clickable_elements, selectionFromSelectedNotice, STAGE} from '../modules/globals.js';
 
 export default () => {
@@ -290,8 +291,10 @@ export default () => {
    * @param sendResponse
    */
   function handleSelectorMessage(message, sender, sendResponse) {
+    debug.log("Received message in selector:", message);
     const {msg} = message;
     if (msg === 'start_select') {
+      debug.log("Starting storage watch connection");
       (async () => {
         await storage.setItem('local:mousemoveListenerActive', true);
 
@@ -304,6 +307,7 @@ export default () => {
         window.addEventListener('mousedown', handleMousedown, {once: true});
         window.addEventListener('mousemove', mapE);
         unwatchMousemoveRef.current = storage.watch('local:mousemoveListenerActive', (newValue, oldValue) => {
+          debug.log("Storage mousemove listener status changed:", {new: newValue, old: oldValue});
           if (newValue === true && oldValue === false) {
             window.addEventListener('mousemove', mapE);
           } else if (newValue === false && oldValue === true) {
@@ -386,15 +390,18 @@ export default () => {
   }
 
   useEffect(() => {
+    debug.log("Initializing message listener");
     browser.runtime.onMessage.addListener(handleSelectorMessage);
 
     const unwatchSelection = storage.watch('local:selection', async (newSelection, _) => {
+      debug.log("Storage watch connection established");
       if (newSelection.notice !== null) {
         await reset();
       }
     });
 
     return () => {
+      debug.log("Cleaning up message and storage connections");
       browser.runtime.onMessage.removeListener(handleSelectorMessage);
       //window.removeEventListener('mouseover', handleMouseover);
       //window.removeEventListener('mouseout', handleMouseout);

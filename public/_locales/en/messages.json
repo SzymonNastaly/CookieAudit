@@ -81,6 +81,12 @@
   "popup_cancelScanBtn": {
     "message": "Reset & Initialize"
   },
+  "popup_cookieDeleteInfo": {
+    "message": "All cookies currently stored in the browser will be deleted. This will result in you being logged out of your accounts on other websites. If you don't want this to happen, please install CookieAudit in a separate browser."
+  },
+  "popup_okBtn": {
+    "message": "OK"
+  },
   "popup_download": {
     "message": "Downloading models for notice analysis."
   },

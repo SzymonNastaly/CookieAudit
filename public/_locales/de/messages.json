@@ -81,6 +81,12 @@
   "popup_cancelScanBtn": {
     "message": "Zurücksetzen & Initialisieren"
   },
+  "popup_cookieDeleteInfo": {
+    "message": "Für den Scan werden alle Cookies im Browser gelöscht. Dies wird Sie aus allen Webseiten ausloggen. Falls Sie dies verhindern möchten, benutzen Sie bitte CookieAudit in einem anderen Browser."
+  },
+  "popup_okBtn": {
+    "message": "Ok"
+  },
   "popup_download": {
     "message": "Modelle für Banneranalyse werden heruntergeladen."
   },

@@ -3,8 +3,11 @@ import react from '@vitejs/plugin-react';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
-  vite: () => ({
+  vite: ({mode}) => ({
     plugins: [react()],
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(mode)
+    }
   }),
   manifest: {
     name: 'Cookie Audit',
