@@ -4,7 +4,7 @@
 ### Analysis of necessary changes for Firefox compatibility
 * browser.runtime.onInstalled available
 * browser.runtime.getManifest() available
-* browser.runtime.OnInstalledReason available
+  * browser.runtime.OnInstalledReason available
 * browser.tabs.create available
 * browser.runtime.onStartup available
 * browser.tabs.onUpdated available
