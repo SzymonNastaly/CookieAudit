@@ -23,21 +23,15 @@ This version of CookieAudit is the outcome of the Bachelor's thesis ["Generalizi
 
 ## Videos
 
-<p align="center">
-  <video src="docs/video1.mp4" controls width="720"></video>
-</p>
+https://github.com/user-attachments/assets/d397a04b-bfe2-4198-a56f-4a0f23b43057
 
 Video 1 shows how to select the cookie notice and start the scan.
 
-<p align="center">
-  <video src="docs/video2.mp4" controls width="720"></video>
-</p>
+https://github.com/user-attachments/assets/8db26622-6360-4dc0-a034-8401bf763335
 
 Video 2 shows the extension going through the cookie banner settings and analyzing them, finding all links and text.
 
-<p align="center">
-  <video src="docs/video3.mp4" controls width="720"></video>
-</p>
+https://github.com/user-attachments/assets/aad80829-1943-4225-86b3-0e9105f5e05a
 
 Video 3 shows the extension interacting with the cookie banner (clicking deny), then scrolling through the page and subpages, and analyzing whether any cookies are set nonetheless — against the choice of the user.
 
